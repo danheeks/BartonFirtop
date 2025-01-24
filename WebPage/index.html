@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barton Firtop Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .header img {
+            height: 50px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 800px;
+            margin: 20px 0;
+        }
+
+        .controls button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .open-a {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .auto {
+            background-color: #e9ecef;
+            color: black;
+        }
+
+        .open-b {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .stop {
+            background-color: #dc3545;
+            color: white;
+            font-size: 18px;
+            padding: 10px 50px;
+            margin-top: 20px;
+            border-radius: 10px;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .status-column {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .status-item span {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .green {
+            background-color: #28a745;
+        }
+
+        .red {
+            background-color: #dc3545;
+        }
+
+        .gray {
+            background-color: #6c757d;
+        }
+    </style>
+    <script src="script.js" defer></script>
+</head>
+<body>
+    <div class="header">
+        <div></div>
+        <img src="logo.png" alt="Barton Firtop Logo">
+    </div>
+    
+    <div style="text-align: center; margin: 20px;">
+        <svg id="svg-container" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
+            <!-- Static Housing Image -->
+            <image id="housing" href="housing.svg" x="0" y="0" width="300" height="300" />
+
+            <!-- Movable Valve Image -->
+            <image id="valve" href="valve.svg" x="100" y="100" width="50" height="50" />
+        </svg>
+    </div>
+
+    <div class="controls">
+        <button class="open-a" onclick="sendRequest('openA')">Open A</button>
+        <button class="auto" onclick="sendRequest('auto')">Auto</button>
+        <button class="open-b" onclick="sendRequest('openB')">Open B</button>
+    </div>
+
+    <div class="status">
+        <div class="status-column">
+            <div class="status-item"><span class="green"></span> Chamber "A" On-Line</div>
+            <div class="status-item"><span class="gray"></span> Chamber "A" Standby</div>
+            <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+            <div class="status-item"><span class="gray"></span> Equalization Valve</div>
+            <div class="status-item"><span class="gray"></span> Maintenance Required</div>
+            <div class="status-item"><span class="gray"></span> Solar Power</div>
+        </div>
+
+        <div class="status-column">
+            <div class="status-item"><span class="gray"></span> Chamber "B" On-Line</div>
+            <div class="status-item"><span class="red"></span> Chamber "B" Standby</div>
+            <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+            <div class="status-item"><span class="gray"></span> Changeover Active</div>
+            <div class="status-item"><span class="gray"></span> System Fault</div>
+            <div class="status-item"><span class="green"></span> External Power</div>
+        </div>
+    </div>
+
+    <button class="stop" onclick="sendRequest('stop')">STOP</button>
+</body>
+</html>
