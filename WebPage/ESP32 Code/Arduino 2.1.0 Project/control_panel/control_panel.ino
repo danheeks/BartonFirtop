@@ -15,8 +15,7 @@ bool openingB = false;
 float positionA = 0;
 float positionB = 200;
 unsigned long startTime = 0; // Start time of the movement
-
-
+float startPos = 0.0;
 
 // Create an instance of the web server
 AsyncWebServer server(80);
@@ -27,6 +26,8 @@ void handleOpenA() {
     // Add your logic here
     openingA = true;
     openingB = false;
+    startTime = millis(); // Record the start time
+    startPos = valveX;
 }
 
 void handleAuto() {
@@ -39,6 +40,8 @@ void handleOpenB() {
     // Add your logic here
     openingA = false;
     openingB = true;
+    startTime = millis(); // Record the start time
+    startPos = valveX;
 }
 
 void handleStop() {
@@ -46,6 +49,8 @@ void handleStop() {
     // Add your logic here
     openingA = false;
     openingB = false;
+    startTime = millis(); // Record the start time
+    startPos = valveX;
 }
 
 // Function to handle the "/valve-position" endpoint
@@ -93,12 +98,10 @@ void setup() {
             // Perform actions based on the "action" field
             if (action == "openA") {
                 Serial.println("Opening Chamber A...");
-                startTime = millis(); // Record the start time
                 // Add your code to open Chamber A
                 handleOpenA();
             } else if (action == "openB") {
                 Serial.println("Opening Chamber B...");
-                startTime = millis(); // Record the start time
                 // Add your code to open Chamber B
                 handleOpenB();
             } else if (action == "stop") {
@@ -122,15 +125,24 @@ void setup() {
 }
 
 void loop() {
-    if(openingA)
+    int dir = 0;
+    float pos = -1000000.0;
+    if(openingA)pos = positionA;
+    if(openingB)pos = positionB;
+    if(pos != -1000000.0)
     {
-      if(valveX > positionA)valveX -= 1;
-      if(valveX < positionA)valveX += 1;
+      if(valveX > pos)dir = -1;
+      if(valveX < pos)dir = 1;
     }
-    if(openingB)
+    if(dir != 0)
     {
-      if(valveX > positionB)valveX -= 1;
-      if(valveX < positionB)valveX += 1;
+      unsigned long time = millis();
+      valveX = startPos + 0.01 * (time - startTime) * dir;
+      if(dir > 0 && valveX >= pos || dir<0 && valveX <= pos)
+      {
+        valveX = pos;
+        openingA = false;
+        openingB = false;
+      }
     }
-
 }

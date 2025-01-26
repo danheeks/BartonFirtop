@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barton Firtop Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+        }
+        .sidebar {
+            height: 100vh;
+            width: 250px;
+            background-color: #333;
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            overflow: hidden;
+        }
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            width: 100%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.3s ease, padding-left 0.3s ease;
+        }
+        .sidebar button:hover {
+            background-color: #575757;
+        }
+        .sidebar button .icon {
+            font-size: 20px;
+            width: 20px;
+            text-align: center;
+        }
+        .sidebar button .text {
+            display: inline;
+            transition: opacity 0.3s ease;
+        }
+        .sidebar.collapsed button .text {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sidebar .toggle-btn {
+            background-color: #444;
+            text-align: center;
+            font-size: 20px;
+        }
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+            width: 100%;
+        }
+        .content.collapsed {
+            margin-left: 60px;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-btn" id="toggleSidebar">☰</button>
+        <button id="controlNav">
+            <span class="icon">🎛️</span>
+            <span class="text">Control</span>
+        </button>
+        <button id="settingsNav">
+            <span class="icon">🔧</span>
+            <span class="text">Settings</span>
+        </button>
+    </div>
+
+    <div class="content" id="content">
+        <div id="controlPage" class="page active">
+            <h1 class="section-title">Control</h1>
+            <svg id="controlSVG" width="300" height="300" style="border: 1px solid black;">
+                <rect id="valve" x="100" y="100" width="50" height="50" fill="blue"></rect>
+            </svg>
+            <button onclick="sendRequest('moveValve')">Move Valve</button>
+        </div>
+
+        <div id="settingsPage" class="page">
+            <h1 class="section-title">Settings</h1>
+            <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">12.0V</span></p>
+            <p><strong>Angle:</strong> <span id="angle">45°</span></p>
+            <p><strong>Status:</strong> <span id="status">OK</span></p>
+        </div>
+    </div>
+
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
+        const toggleSidebar = document.getElementById('toggleSidebar');
+        const controlNav = document.getElementById('controlNav');
+        const settingsNav = document.getElementById('settingsNav');
+        const controlPage = document.getElementById('controlPage');
+        const settingsPage = document.getElementById('settingsPage');
+
+        // Toggle sidebar collapse
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        });
+
+        // Show the "Control" page
+        controlNav.addEventListener('click', () => {
+            controlPage.classList.add('active');
+            settingsPage.classList.remove('active');
+        });
+
+        // Show the "Settings" page
+        settingsNav.addEventListener('click', () => {
+            settingsPage.classList.add('active');
+            controlPage.classList.remove('active');
+        });
+
+        // Example of fetching and updating settings
+        setInterval(() => {
+            fetch('/battery-voltage')
+                .then(response => response.text())
+                .then(data => document.getElementById('batteryVoltage').textContent = data + 'V')
+                .catch(error => console.error('Error fetching battery voltage:', error));
+
+            fetch('/angle')
+                .then(response => response.text())
+                .then(data => document.getElementById('angle').textContent = data + '°')
+                .catch(error => console.error('Error fetching angle:', error));
+
+            fetch('/status')
+                .then(response => response.text())
+                .then(data => document.getElementById('status').textContent = data)
+                .catch(error => console.error('Error fetching status:', error));
+        }, 1000);
+    </script>
+</body>
+</html>
