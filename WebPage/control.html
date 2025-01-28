@@ -7,8 +7,109 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
             display: flex;
+            flex-direction: column;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        #svg-container {
+            display: block;
+            margin: 0 auto; /* Centers horizontally */
+            max-width: 100%; /* Ensures it doesn't overflow */
+        }        
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: none; /* Remove width constraints */
+        }
+        
+        .header img {
+            height: 50px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center; /* Center the buttons */
+            gap: 20px; /* Add spacing between buttons */
+            width: 100%;
+            margin: 20px auto; /* Center the container */
+            max-width: 800px; /* Prevent it from stretching too much */
+        }
+        .controls button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .open-a {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .auto {
+            background-color: #e9ecef;
+            color: black;
+        }
+
+        .open-b {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .stop {
+            display: block;
+            background-color: #dc3545;
+            color: white;
+            font-size: 18px;
+            padding: 10px 50px;
+            margin: 20px auto; /* Center horizontally */
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            max-width: 600px; /* Adjust width as needed */
+            margin: 20px auto; /* Center the status section */
+        }
+        .status-column {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+
+        .status-item span {
+            width: 15px;
+            height: 15px;
+            margin-right: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .green {
+            background-color: #28a745;
+        }
+
+        .red {
+            background-color: #dc3545;
+        }
+
+        .gray {
+            background-color: #6c757d;
         }
         .sidebar {
             height: 100vh;
@@ -22,7 +123,8 @@
             flex-direction: column;
             transition: width 0.3s ease;
             overflow: hidden;
-        }
+            z-index: 1000; /* Ensure it stays above content */
+       }
         .sidebar.collapsed {
             width: 60px;
         }
@@ -65,7 +167,9 @@
             margin-left: 250px;
             padding: 20px;
             transition: margin-left 0.3s ease;
-            width: 100%;
+            flex: 1; /* Allow content to fill remaining space */
+            box-sizing: border-box;
+            max-width: 1200px; /* Adjust as needed for a wider layout */
         }
         .content.collapsed {
             margin-left: 60px;
@@ -97,11 +201,48 @@
 
     <div class="content" id="content">
         <div id="controlPage" class="page active">
-            <h1 class="section-title">Control</h1>
-            <svg id="controlSVG" width="300" height="300" style="border: 1px solid black;">
-                <rect id="valve" x="100" y="100" width="50" height="50" fill="blue"></rect>
-            </svg>
-            <button onclick="sendRequest('moveValve')">Move Valve</button>
+            <div class="header">
+                <div></div>
+                <img src="logo.png" alt="Barton Firtop Logo">
+            </div>
+            
+            <div style="display: flex; justify-content: center; width: 100%;">
+                <svg id="svg-container" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Static Housing Image -->
+                    <image id="housing" href="housing.svg" x="0" y="0" width="200" height="200" />
+                    
+                    <!-- Movable Valve Image -->
+                    <image id="valve" href="valve.svg" x="0" y="0" width="200" height="200" />
+                </svg>
+            </div>
+            
+            <div class="controls">
+                <button class="open-a" onclick="sendRequest('openA')">Open A</button>
+                <button class="auto" onclick="sendRequest('auto')">Auto</button>
+                <button class="open-b" onclick="sendRequest('openB')">Open B</button>
+            </div>
+
+            <div class="status">
+                <div class="status-column">
+                    <div class="status-item"><span class="green"></span> Chamber "A" On-Line</div>
+                    <div class="status-item"><span class="gray"></span> Chamber "A" Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="gray"></span> Equalization Valve</div>
+                    <div class="status-item"><span class="gray"></span> Maintenance Required</div>
+                    <div class="status-item"><span class="gray"></span> Solar Power</div>
+                </div>
+
+                <div class="status-column">
+                    <div class="status-item"><span class="gray"></span> Chamber "B" On-Line</div>
+                    <div class="status-item"><span class="red"></span> Chamber "B" Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="gray"></span> Changeover Active</div>
+                    <div class="status-item"><span class="gray"></span> System Fault</div>
+                    <div class="status-item"><span class="green"></span> External Power</div>
+                </div>
+            </div>
+
+            <button class="stop" onclick="sendRequest('stop')">STOP</button>
         </div>
 
         <div id="settingsPage" class="page">
