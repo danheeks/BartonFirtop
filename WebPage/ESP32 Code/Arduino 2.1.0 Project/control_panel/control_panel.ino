@@ -3,9 +3,9 @@
 #include <FS.h>
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
-#include <time.h>
 #include <ModbusMaster.h>
 #include <HardwareSerial.h>
+#include "soc/rtc_wdt.h"
 
 // connections RS485 module to Arduino
 // GND to GND
@@ -37,12 +37,6 @@ const char* ssid = "BartonFirtop-Control";
 const char* password = "123456789";
 float valveX = 100; // Initial X position
 float valveY = 100; // Initial Y position
-bool openingA = false;
-bool openingB = false;
-float positionA = 0;
-float positionB = 200;
-unsigned long startTime = 0; // Start time of the movement
-float startPos = 0.0;
 
 // Create an instance of the web server
 AsyncWebServer server(80);
@@ -62,10 +56,8 @@ int i = 0;
 void handleOpenA() {
     Serial.println("Open A pressed");
     // Add your logic here
-    openingA = true;
-    openingB = false;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
+    // tell actuator to close
+    node.writeSingleCoil(1, 1);
 }
 
 void handleAuto() {
@@ -76,19 +68,15 @@ void handleAuto() {
 void handleOpenB() {
     Serial.println("Open B pressed");
     // Add your logic here
-    openingA = false;
-    openingB = true;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
+    // tell actuator to open
+    node.writeSingleCoil(0, 1);
 }
 
 void handleStop() {
     Serial.println("STOP pressed");
     // Add your logic here
-    openingA = false;
-    openingB = false;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
+    // tell actuator to stop
+      node.writeSingleCoil(3, 1);
 }
 
 // Function to handle the "/valve-position" endpoint
@@ -134,19 +122,22 @@ void printDiscreteInput(uint16_t u16ReadAddress, char* str)
 }
 
 void setup() {
+    rtc_wdt_protect_off();    // Turns off the automatic wdt service
+rtc_wdt_enable();         // Turn it on manually
+rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let dog wait.
+    
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
     // communicate with Modbus slave ID 1 over RS485
     node.begin(1, rs485);
 
-    Serial.begin(9600);
+    Serial.begin(115200);
 
     delay(1000);
 
     // Set up the ESP32 as an access point
     WiFi.softAP(ssid, password);
 
-#if 1
     // Initialize SPIFFS
     if (!SPIFFS.begin(true)) {
         Serial.println("Failed to mount SPIFFS");
@@ -202,7 +193,6 @@ void setup() {
     // Start the server
     server.begin();
 
-    #endif
     Serial.println("Server started");
 }
 
@@ -346,4 +336,7 @@ void loop() {
 
     }
   }
+
+   // Reset the watchdog timer
+    rtc_wdt_feed();
 }
