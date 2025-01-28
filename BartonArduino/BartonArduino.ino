@@ -1,9 +1,26 @@
-#include <WiFi.h>
-#include <ESPAsyncWebServer.h>
-#include <FS.h>
-#include <SPIFFS.h>
-#include <ArduinoJson.h>
-#include <time.h>
+/*
+
+  Basic.pde - example using ModbusMaster library
+
+  Library:: ModbusMaster
+  Author:: Doc Walker <4-20ma@wvfans.net>
+
+  Copyright:: 2009-2016 Doc Walker
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+
+*/
+
 #include <ModbusMaster.h>
 #include <HardwareSerial.h>
 
@@ -30,73 +47,34 @@
 // t - print 1 if failed to complete a move, else 0
 // l - print 1 if battery to low to start a move, else 0
 // D - print all discrete inputs
-
-
-// Set your WiFi credentials
-const char* ssid = "BartonFirtop-Control";
-const char* password = "123456789";
-float valveX = 100; // Initial X position
-float valveY = 100; // Initial Y position
-bool openingA = false;
-bool openingB = false;
-float positionA = 0;
-float positionB = 200;
-unsigned long startTime = 0; // Start time of the movement
-float startPos = 0.0;
-
-// Create an instance of the web server
-AsyncWebServer server(80);
+ 
 
 HardwareSerial rs485(1); // Use UART1
 
-#define RX_PIN 17
-#define TX_PIN 16
+#define RX_PIN 4
+#define TX_PIN 2
 
 // instantiate ModbusMaster object
 ModbusMaster node;
+
+// Define the SoftwareSerial objects and their pins
+//SoftwareSerial rs485(RX_PIN, TX_PIN);
 char reading_number = 0;
 char num[64];
 int i = 0;
 
-// Functions triggered by button presses
-void handleOpenA() {
-    Serial.println("Open A pressed");
-    // Add your logic here
-    openingA = true;
-    openingB = false;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
-}
+void setup()
+{
+  // use Serial (port 0); initialize Modbus communication baud rate
+rs485.begin(9600, SERIAL_8N1, 4, 2); // Assign TX to GPIO2, RX to GPIO4
+//  rs485.begin(9600);
 
-void handleAuto() {
-    Serial.println("Auto pressed");
-    // Add your logic here
-}
+  // communicate with Modbus slave ID 2 over Serial (port 0)
+  node.begin(1, rs485);
 
-void handleOpenB() {
-    Serial.println("Open B pressed");
-    // Add your logic here
-    openingA = false;
-    openingB = true;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
-}
+  Serial.begin(9600);
 
-void handleStop() {
-    Serial.println("STOP pressed");
-    // Add your logic here
-    openingA = false;
-    openingB = false;
-    startTime = millis(); // Record the start time
-    startPos = valveX;
-}
-
-// Function to handle the "/valve-position" endpoint
-void handleValvePosition(AsyncWebServerRequest *request) {
-    Serial.print("Handling Valve position");
-    String json = "{ \"x\": " + String(valveX) + ", \"y\": " + String(valveY) + " }";
-    Serial.println(json);
-    request->send(200, "application/json", json);
+  Serial.println("Modbus Master started...");
 }
 
 void printInputRegister(uint16_t u16ReadAddress, char* str)
@@ -133,80 +111,8 @@ void printDiscreteInput(uint16_t u16ReadAddress, char* str)
   }
 }
 
-void setup() {
-    rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
-
-    // communicate with Modbus slave ID 1 over RS485
-    node.begin(1, rs485);
-
-    Serial.begin(9600);
-
-    delay(1000);
-
-    // Set up the ESP32 as an access point
-    WiFi.softAP(ssid, password);
-
-#if 1
-    // Initialize SPIFFS
-    if (!SPIFFS.begin(true)) {
-        Serial.println("Failed to mount SPIFFS");
-        return;
-    }
-
-    // Serve static files from SPIFFS
-    server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
-
-      // Handle POST requests to /action
-    server.on("/action", HTTP_POST, [](AsyncWebServerRequest *request) {}, 
-        NULL,  // No body handler for multipart
-        [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-            String body = String((char*)data).substring(0, len);
-            Serial.println("Received POST body: " + body);
-
-            // Parse JSON
-            StaticJsonDocument<200> doc;
-            DeserializationError error = deserializeJson(doc, body);
-            if (error) {
-                Serial.println("Failed to parse JSON");
-                request->send(400, "text/plain", "Bad Request: Invalid JSON");
-                return;
-            }
-
-            String action = doc["action"]; // Extract the "action" field
-            Serial.println("Action: " + action);
-
-            // Perform actions based on the "action" field
-            if (action == "openA") {
-                Serial.println("Opening Chamber A...");
-                // Add your code to open Chamber A
-                handleOpenA();
-            } else if (action == "openB") {
-                Serial.println("Opening Chamber B...");
-                // Add your code to open Chamber B
-                handleOpenB();
-            } else if (action == "stop") {
-                Serial.println("Stopping system...");
-                // Add your code to stop the system
-                handleStop();
-            } else {
-                Serial.println("Unknown action received");
-            }
-
-            request->send(200, "text/plain", "Action received: " + action);
-        }
-    );
-
-    // Define the "/valve-position" route
-    server.on("/valve-position", HTTP_GET, handleValvePosition);
-
-    // Start the server
-    server.begin();
-
-    #endif
-    Serial.println("Server started");
-}
-
-void loop() {
+void loop()
+{
   uint8_t result;
   uint16_t data;
   
