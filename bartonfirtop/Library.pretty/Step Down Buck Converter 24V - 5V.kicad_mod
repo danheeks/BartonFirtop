@@ -1,0 +1,162 @@
+(footprint "Step Down Buck Converter 24V - 5V"
+	(version 20240108)
+	(generator "pcbnew")
+	(generator_version "8.0")
+	(layer "F.Cu")
+	(property "Reference" "REF**"
+		(at -6 -15 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(uuid "6b70e61e-b08f-4563-a3c5-237822e29ac4")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Value" "Step Down Buck Converter 24V - 5V"
+		(at 1 15.5 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "97cbdb08-584e-4948-aac7-0c711c6e3669")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Footprint" ""
+		(at 1 21 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "1ea5fabb-4947-42af-8b4a-9d772093a693")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 1 21 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "62ab97fd-1364-4170-9acf-28cb78342726")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 1 21 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "81f635f5-00c3-4e89-9f68-9f5f4ac20ce9")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr through_hole)
+	(fp_rect
+		(start -7.6 -12.8)
+		(end 7.6 12.8)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill none)
+		(layer "F.SilkS")
+		(uuid "2c86b416-bbd3-464f-bc51-14d72cb3a336")
+	)
+	(fp_rect
+		(start -8.35 -13.55)
+		(end 8.35 13.55)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill none)
+		(layer "F.CrtYd")
+		(uuid "49a8808f-efff-4b8e-83cd-9f4af141317f")
+	)
+	(fp_rect
+		(start -7.6 -12.8)
+		(end 7.6 12.8)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill none)
+		(layer "F.Fab")
+		(uuid "7d95034a-03af-4d3e-a63d-edff9206ea47")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 18 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "37664dca-4db8-4b76-b112-d3a5d3696673")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(pad "1" thru_hole rect
+		(at -6.15 -10.9)
+		(size 2 2)
+		(drill 1.02)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "f1049421-836c-4a84-b70a-b92f301fb01b")
+	)
+	(pad "2" thru_hole circle
+		(at 6.15 -10.9)
+		(size 2 2)
+		(drill 1.02)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "e3a1b95b-20cb-4347-8c6b-761adcac24e6")
+	)
+	(pad "3" thru_hole circle
+		(at 3.5 5.8)
+		(size 2 2)
+		(drill 1.02)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "8c7cc9ff-2eed-4baf-acf1-b5892717274d")
+	)
+	(pad "4" thru_hole circle
+		(at -3.5 5.8)
+		(size 2 2)
+		(drill 1.02)
+		(layers "*.Cu" "*.Mask")
+		(remove_unused_layers no)
+		(solder_mask_margin 0.102)
+		(uuid "bb4221c2-4414-49ef-b1f4-b1da78bb8adb")
+	)
+	(model "${KIPRJMOD}/Step Down Converter.stp"
+		(offset
+			(xyz 0 0 0)
+		)
+		(scale
+			(xyz 1 1 1)
+		)
+		(rotate
+			(xyz 0 0 0)
+		)
+	)
+)
