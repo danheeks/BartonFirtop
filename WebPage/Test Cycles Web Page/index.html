@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+        .container {
+            display: inline-block;
+            text-align: left;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+        }
+        input, button {
+            margin: 10px 0;
+            display: block;
+            width: 100%;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test System</h1>
+    <div class="container">
+        <label for="cycleInput">Number of Cycles to do:</label>
+        <input type="number" id="cycleInput" min="1">
+        
+        <label for="cycleDone">Number of Cycles done:</label>
+        <input type="text" id="cycleDone" readonly value="0">
+        
+        <label for="status">Status:</label>
+        <input type="text" id="status" readonly value="Ready">
+        
+        <button id="startBtn" onclick="sendRequest('start')">Start Tests</button>
+        <button id="stopBtn" onclick="sendRequest('stop')">Stop</button>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
