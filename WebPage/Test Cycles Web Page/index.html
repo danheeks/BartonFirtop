@@ -30,7 +30,10 @@
     <h1>Test System</h1>
     <div class="container">
         <label for="cycleInput">Number of Cycles to do:</label>
-        <input type="number" id="cycleInput" min="1">
+        <input type="number" id="cycleInput" min="1" value="1000">
+            
+        <label for="waitTime">Wait Time (seconds):</label>
+        <input type="number" id="waitTime" min="1" value="20">
         
         <label for="cycleDone">Number of Cycles done:</label>
         <input type="text" id="cycleDone" readonly value="0">
@@ -38,10 +41,10 @@
         <label for="status">Status:</label>
         <input type="text" id="status" readonly value="Ready">
         
-        <button id="startBtn" onclick="sendRequest('start')">Start Tests</button>
-        <button id="stopBtn" onclick="sendRequest('stop')">Stop</button>
+        <button id="startBtn">Start Tests</button>
+        <button id="stopBtn">Stop</button>
     </div>
     
-    <script src="script.js"></script>
+    <script src="/script.js"></script>
 </body>
 </html>

@@ -7,6 +7,8 @@
 #include <HardwareSerial.h>
 #include "soc/rtc_wdt.h"
 
+#define TEST_CYCLES
+
 // connections RS485 module to Arduino
 // GND to GND
 // VCC to 5V
@@ -40,6 +42,70 @@ float valveY = 100; // Initial Y position
 
 // Create an instance of the web server
 AsyncWebServer server(80);
+#ifdef TEST_CYCLES
+AsyncWebSocket ws("/ws");
+
+#define STATUS_READY 0
+#define STATUS_CLOSING 1
+#define STATUS_OPENING 2
+#define STATUS_WAITING 3
+
+int cycleCount = 0;
+int maxCycles = 0;
+int waitTime = 20; // Default wait time in seconds
+int status = STATUS_READY;
+bool next_move_is_open = false; // start with close move
+int timeWaited = 0;
+
+void notifyClients() {
+  String status_string = "";
+  switch(status)
+  {
+    case STATUS_READY:
+      status_string = "Ready...";
+      break;
+    case STATUS_OPENING:
+      status_string = "Opening...";
+      break;
+    case STATUS_CLOSING:
+      status_string = "Closing...";
+      break;
+    case STATUS_WAITING:
+      status_string = "Waiting time, time waited = " + String(timeWaited/2);
+      break;
+  }
+    String message = String("{\"cycleDone\":") + cycleCount + ", \"status\":\"" + status_string + "\"}";
+    ws.textAll(message);
+}
+
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+    AwsFrameInfo *info = (AwsFrameInfo*)arg;
+    if (info->opcode == WS_TEXT) {
+        String msg = String((char*)data).substring(0, len);
+        if (msg.startsWith("start:")) {
+            maxCycles = msg.substring(6).toInt();
+            status = STATUS_WAITING;
+            next_move_is_open = true;
+            timeWaited = waitTime * 2;
+        }
+        else if (msg == "stop") {
+            stopActuator();
+            Serial.println("stop");
+            status = STATUS_READY;
+        } 
+        else if (msg.startsWith("waitTime:")) {
+            waitTime = msg.substring(9).toInt();
+        }
+        notifyClients();
+    }
+}
+
+void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    if (type == WS_EVT_DATA) {
+        handleWebSocketMessage(arg, data, len);
+    }
+}
+#endif
 
 HardwareSerial rs485(1); // Use UART1
 
@@ -51,6 +117,24 @@ ModbusMaster node;
 char reading_number = 0;
 char num[64];
 int i = 0;
+
+void openActuator()
+{
+    // tell actuator to open
+    node.writeSingleCoil(0, 1);
+}
+
+void closeActuator()
+{
+    // tell actuator to close
+    node.writeSingleCoil(1, 1);
+}
+
+void stopActuator()
+{
+    // tell actuator to stop
+    node.writeSingleCoil(3, 1);
+}
 
 // Functions triggered by button presses
 void handleOpenA() {
@@ -144,6 +228,21 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
         return;
     }
 
+#ifdef TEST_CYCLES
+    ws.onEvent(onWebSocketEvent);
+    server.addHandler(&ws);
+
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html", "text/html");
+    });
+
+    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/script.js", "application/javascript");
+    });
+
+    server.begin();
+#else    
+
     // Serve static files from SPIFFS
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
@@ -192,11 +291,98 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
 
     // Start the server
     server.begin();
+  #endif
 
     Serial.println("Server started");
 }
 
+bool isDiscreteInputTrue(uint16_t u16ReadAddress)
+{
+    uint8_t result = node.readDiscreteInputs(u16ReadAddress, 1);
+    
+    // do something with data if read is successful
+    if (result == node.ku8MBSuccess)
+    {
+        return (int)(node.getResponseBuffer(0)) != 0;
+    }
+  else
+  {
+    Serial.print("Error code: ");
+    Serial.println(result);
+  }
+
+  return false;
+}
+
+bool isOpen()
+{
+  return isDiscreteInputTrue(0);
+}
+
+bool isClosed()
+{
+  return isDiscreteInputTrue(1);
+}
+
+
 void loop() {
+#ifdef TEST_CYCLES
+  switch(status)
+  {
+    case STATUS_OPENING:
+    {
+      if(isOpen())
+      {
+          status = STATUS_WAITING;
+          timeWaited = 0;
+      }
+    }
+    break;
+
+    case STATUS_CLOSING:
+    {
+      if(isClosed())
+      {
+        Serial.println("is Closed");
+        cycleCount++;
+        if(cycleCount >= maxCycles)
+        {
+          status = STATUS_READY;
+        }
+        else
+        {
+          status = STATUS_WAITING;
+          timeWaited = 0;
+        }
+      }
+    }
+    break;
+
+    case STATUS_WAITING:
+    {
+      timeWaited++;
+      if(timeWaited >= waitTime * 2)
+      {
+            if(next_move_is_open)
+            {
+              openActuator();
+              status = STATUS_OPENING;
+              next_move_is_open = false;
+           }
+            else
+            {
+              closeActuator();
+              status = STATUS_CLOSING;
+              next_move_is_open = true;
+            }
+      }
+    }
+    break;
+  }
+
+  notifyClients();
+  delay(500);
+ #else
   uint8_t result;
   uint16_t data;
   
@@ -336,6 +522,7 @@ void loop() {
 
     }
   }
+  #endif 
 
    // Reset the watchdog timer
     rtc_wdt_feed();
