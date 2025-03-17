@@ -9,32 +9,37 @@
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
-            align-items: center;
             background-color: #f9f9f9;
             margin: 0;
             padding: 20px;
         }
-
+        
+        #svg-container {
+            display: block;
+            margin: 0 auto; /* Centers horizontally */
+            max-width: 100%; /* Ensures it doesn't overflow */
+        }        
+        
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            max-width: 800px;
+            max-width: none; /* Remove width constraints */
         }
-
+        
         .header img {
             height: 50px;
         }
 
         .controls {
             display: flex;
-            justify-content: space-around;
+            justify-content: center; /* Center the buttons */
+            gap: 20px; /* Add spacing between buttons */
             width: 100%;
-            max-width: 800px;
-            margin: 20px 0;
+            margin: 20px auto; /* Center the container */
+            max-width: 800px; /* Prevent it from stretching too much */
         }
-
         .controls button {
             padding: 15px 30px;
             font-size: 16px;
@@ -59,21 +64,22 @@
         }
 
         .stop {
+            display: block;
             background-color: #dc3545;
             color: white;
             font-size: 18px;
             padding: 10px 50px;
-            margin-top: 20px;
+            margin: 20px auto; /* Center horizontally */
             border-radius: 10px;
+            text-align: center;
         }
 
         .status {
             display: flex;
             justify-content: space-between;
-            width: 100%;
-            max-width: 800px;
+            max-width: 600px; /* Adjust width as needed */
+            margin: 20px auto; /* Center the status section */
         }
-
         .status-column {
             display: flex;
             flex-direction: column;
@@ -93,7 +99,20 @@
             border-radius: 50%;
             display: inline-block;
         }
+.status-column:first-child {
+    align-items: flex-end; /* Aligns all items to the right */
+}
 
+.status-column:first-child .status-item {
+    flex-direction: row-reverse; /* Moves LEDs to the right of text */
+    justify-content: flex-end; /* Ensures alignment */
+    text-align: right; /* Aligns text to the right */
+}
+
+.status-column:first-child .status-item span {
+    margin-left: 10px; /* Space between text and LED */
+    margin-right: 0; /* Removes the default right margin */
+}
         .green {
             background-color: #28a745;
         }
@@ -105,51 +124,219 @@
         .gray {
             background-color: #6c757d;
         }
+        .sidebar {
+            height: 100vh;
+            width: 250px;
+            background-color: #333;
+            color: white;
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.3s ease;
+            overflow: hidden;
+            z-index: 1000; /* Ensure it stays above content */
+       }
+        .sidebar.collapsed {
+            width: 60px;
+        }
+        .sidebar button {
+            background: none;
+            border: none;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            width: 100%;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.3s ease, padding-left 0.3s ease;
+        }
+        .sidebar button:hover {
+            background-color: #575757;
+        }
+        .sidebar button .icon {
+            font-size: 20px;
+            width: 20px;
+            text-align: center;
+        }
+        .sidebar button .text {
+            display: inline;
+            transition: opacity 0.3s ease;
+        }
+        .sidebar.collapsed button .text {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sidebar .toggle-btn {
+            background-color: #444;
+            text-align: center;
+            font-size: 20px;
+        }
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+            flex: 1; /* Allow content to fill remaining space */
+            box-sizing: border-box;
+            max-width: 1200px; /* Adjust as needed for a wider layout */
+        }
+        .content.collapsed {
+            margin-left: 60px;
+        }
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
     </style>
-    <script src="script.js" defer></script>
 </head>
 <body>
-    <div class="header">
-        <div></div>
-        <img src="logo.png" alt="Barton Firtop Logo">
-    </div>
-    
-    <div style="text-align: center; margin: 20px;">
-        <svg id="svg-container" width="300" height="300" xmlns="http://www.w3.org/2000/svg">
-            <!-- Static Housing Image -->
-            <image id="housing" href="housing.svg" x="0" y="0" width="300" height="300" />
-
-            <!-- Movable Valve Image -->
-            <image id="valve" href="valve.svg" x="100" y="100" width="50" height="50" />
-        </svg>
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-btn" id="toggleSidebar">☰</button>
+        <button id="controlNav">
+            <span class="icon">🎛</span>
+            <span class="text">Control</span>
+        </button>
+        <button id="settingsNav">
+            <span class="icon">🔧</span>
+            <span class="text">Settings</span>
+        </button>
     </div>
 
-    <div class="controls">
-        <button class="open-a" onclick="sendRequest('openA')">Open A</button>
-        <button class="auto" onclick="sendRequest('auto')">Auto</button>
-        <button class="open-b" onclick="sendRequest('openB')">Open B</button>
-    </div>
+    <div class="content" id="content">
+        <div id="controlPage" class="page active">
+            <div class="header">
+                <div></div>
+                <img src="logo.png" alt="Barton Firtop Logo">
+            </div>
+            
+            <div style="display: flex; justify-content: center; width: 100%;">
+                <svg id="svg-container" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Static Housing Image -->
+                    <image id="housing" href="housing.svg" x="0" y="0" width="200" height="200" />
+                    
+                    <!-- Movable Valve Image -->
+                    <image id="valve" href="valve.svg" x="0" y="0" width="200" height="200" />
+                </svg>
+            </div>
+            
+            <div class="controls">
+                <button class="open-a" onclick="sendRequest('openA')">Open A</button>
+                <button class="auto" onclick="sendRequest('auto')">Auto</button>
+                <button class="open-b" onclick="sendRequest('openB')">Open B</button>
+            </div>
 
-    <div class="status">
-        <div class="status-column">
-            <div class="status-item"><span class="green"></span> Chamber "A" On-Line</div>
-            <div class="status-item"><span class="gray"></span> Chamber "A" Standby</div>
-            <div class="status-item"><span class="gray"></span> Differential Pressure</div>
-            <div class="status-item"><span class="gray"></span> Equalization Valve</div>
-            <div class="status-item"><span class="gray"></span> Maintenance Required</div>
-            <div class="status-item"><span class="gray"></span> Solar Power</div>
+            <div class="status">
+                <div class="status-column">
+                    <div class="status-item"><span class="green"></span> Chamber "A" On-Line</div>
+                    <div class="status-item"><span class="gray"></span> Chamber "A" Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="gray"></span> Equalization Valve</div>
+                    <div class="status-item"><span class="gray"></span> Maintenance Required</div>
+                    <div class="status-item"><span class="gray"></span> Solar Power</div>
+                </div>
+
+                <div class="status-column">
+                    <div class="status-item"><span class="gray"></span> Chamber "B" On-Line</div>
+                    <div class="status-item"><span class="red"></span> Chamber "B" Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="gray"></span> Changeover Active</div>
+                    <div class="status-item"><span class="gray"></span> System Fault</div>
+                    <div class="status-item"><span class="green"></span> External Power</div>
+                </div>
+            </div>
+
+            <button class="stop" onclick="sendRequest('stop')">STOP</button>
         </div>
 
-        <div class="status-column">
-            <div class="status-item"><span class="gray"></span> Chamber "B" On-Line</div>
-            <div class="status-item"><span class="red"></span> Chamber "B" Standby</div>
-            <div class="status-item"><span class="gray"></span> Differential Pressure</div>
-            <div class="status-item"><span class="gray"></span> Changeover Active</div>
-            <div class="status-item"><span class="gray"></span> System Fault</div>
-            <div class="status-item"><span class="green"></span> External Power</div>
+        <div id="settingsPage" class="page">
+            <h1 class="section-title">Settings</h1>
+            <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">12.0V</span></p>
+            <p><strong>Angle:</strong> <span id="angle">45°</span></p>
+            <p><strong>Status:</strong> <span id="status">OK</span></p>
         </div>
     </div>
 
-    <button class="stop" onclick="sendRequest('stop')">STOP</button>
+    <script>
+        const sidebar = document.getElementById('sidebar');
+        const content = document.getElementById('content');
+        const toggleSidebar = document.getElementById('toggleSidebar');
+        const controlNav = document.getElementById('controlNav');
+        const settingsNav = document.getElementById('settingsNav');
+        const controlPage = document.getElementById('controlPage');
+        const settingsPage = document.getElementById('settingsPage');
+
+        // Toggle sidebar collapse
+        toggleSidebar.addEventListener('click', () => {
+            sidebar.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        });
+
+        // Show the "Control" page
+        controlNav.addEventListener('click', () => {
+            controlPage.classList.add('active');
+            settingsPage.classList.remove('active');
+        });
+
+        // Show the "Settings" page
+        settingsNav.addEventListener('click', () => {
+            settingsPage.classList.add('active');
+            controlPage.classList.remove('active');
+        });
+
+        // Example of fetching and updating settings
+        setInterval(() => {
+            fetch('/battery-voltage')
+                .then(response => response.text())
+                .then(data => document.getElementById('batteryVoltage').textContent = data + 'V')
+                .catch(error => console.error('Error fetching battery voltage:', error));
+
+            fetch('/angle')
+                .then(response => response.text())
+                .then(data => document.getElementById('angle').textContent = data + '°')
+                .catch(error => console.error('Error fetching angle:', error));
+
+            fetch('/status')
+                .then(response => response.text())
+                .then(data => document.getElementById('status').textContent = data)
+                .catch(error => console.error('Error fetching status:', error));
+        }, 1000);
+        function updateValvePosition(x, y) {
+            const valve = document.getElementById("valve");
+            valve.setAttribute("x", x);
+            valve.setAttribute("y", y);
+        }
+
+        function sendRequest(action) {
+            fetch('/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: action })
+            })
+            .then(response => response.text())
+            .then(data => console.log(data))
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Example of fetching position updates from the ESP32
+        setInterval(() => {
+            fetch('/valve-position')
+                .then(response => response.json())
+                .then(data => {
+                    // Update the valve position with new coordinates
+                    updateValvePosition(data.x, data.y);
+                })
+                .catch(error => console.error('Error fetching valve position:', error));
+        }, 1000); // Fetch every second
+    </script>
 </body>
 </html>
