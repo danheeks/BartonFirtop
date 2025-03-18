@@ -484,7 +484,7 @@
       "plot": "C:/Users/Admin/Downloads/bartonfirtop/",
       "pos_files": "",
       "specctra_dsn": "",
-      "step": "",
+      "step": "../../../Users/Dan/Downloads/bartonfirtop.step",
       "svg": "",
       "vrml": "../../../Users/Dan/Downloads/bartonfirtop.wrl"
     },
@@ -578,7 +578,7 @@
     },
     "net_format_name": "",
     "page_layout_descr_file": "",
-    "plot_directory": "",
+    "plot_directory": "../../../Users/Dan/Downloads/",
     "spice_current_sheet_as_root": false,
     "spice_external_command": "spice \"%I\"",
     "spice_model_current_sheet_as_root": true,

@@ -7,7 +7,27 @@
 #include <HardwareSerial.h>
 #include "soc/rtc_wdt.h"
 
-#define TEST_CYCLES
+//#define TEST_CYCLES
+
+//#define USE_MODBUS
+#define USE_WIFI
+
+#define LED1 13
+#define LED2 12
+#define LED3 14
+#define LED4 27
+#define LED5 26
+#define LED6 25
+#define LED7 33
+#define LED8 32
+#define LED9 23
+#define LED10 22
+#define LED11 15
+#define LED12 2
+#define LED13 5
+#define LED14 18
+#define LED15 19
+#define LED16 21
 
 // connections RS485 module to Arduino
 // GND to GND
@@ -41,7 +61,9 @@ float valveX = 100; // Initial X position
 float valveY = 100; // Initial Y position
 
 // Create an instance of the web server
+#ifdef USE_WIFI
 AsyncWebServer server(80);
+#endif
 #ifdef TEST_CYCLES
 AsyncWebSocket ws("/ws");
 
@@ -107,6 +129,7 @@ void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsE
 }
 #endif
 
+#ifdef USE_MODBUS
 HardwareSerial rs485(1); // Use UART1
 
 #define RX_PIN 17
@@ -114,34 +137,43 @@ HardwareSerial rs485(1); // Use UART1
 
 // instantiate ModbusMaster object
 ModbusMaster node;
+#endif
 char reading_number = 0;
 char num[64];
 int i = 0;
 
 void openActuator()
 {
+#ifdef USE_MODBUS  
     // tell actuator to open
     node.writeSingleCoil(0, 1);
+#endif
 }
 
 void closeActuator()
 {
+#ifdef USE_MODBUS  
     // tell actuator to close
     node.writeSingleCoil(1, 1);
+#endif
 }
 
 void stopActuator()
 {
+#ifdef USE_MODBUS  
     // tell actuator to stop
     node.writeSingleCoil(3, 1);
+#endif
 }
 
 // Functions triggered by button presses
 void handleOpenA() {
+#ifdef USE_MODBUS  
     Serial.println("Open A pressed");
     // Add your logic here
     // tell actuator to close
     node.writeSingleCoil(1, 1);
+#endif
 }
 
 void handleAuto() {
@@ -153,14 +185,18 @@ void handleOpenB() {
     Serial.println("Open B pressed");
     // Add your logic here
     // tell actuator to open
+#ifdef USE_MODBUS  
     node.writeSingleCoil(0, 1);
+#endif
 }
 
 void handleStop() {
     Serial.println("STOP pressed");
     // Add your logic here
     // tell actuator to stop
+#ifdef USE_MODBUS  
       node.writeSingleCoil(3, 1);
+#endif
 }
 
 // Function to handle the "/valve-position" endpoint
@@ -173,6 +209,7 @@ void handleValvePosition(AsyncWebServerRequest *request) {
 
 void printInputRegister(uint16_t u16ReadAddress, char* str)
 {
+#ifdef USE_MODBUS
   uint8_t result = node.readInputRegisters(u16ReadAddress, 1);
         
   // do something with data if read is successful
@@ -186,10 +223,12 @@ void printInputRegister(uint16_t u16ReadAddress, char* str)
     Serial.print("Error code: ");
     Serial.println(result);
   }
+#endif
 }
 
 void printDiscreteInput(uint16_t u16ReadAddress, char* str)
 {
+#ifdef USE_MODBUS
     uint8_t result = node.readDiscreteInputs(u16ReadAddress, 1);
     
     // do something with data if read is successful
@@ -203,24 +242,49 @@ void printDiscreteInput(uint16_t u16ReadAddress, char* str)
     Serial.print("Error code: ");
     Serial.println(result);
   }
+#endif
 }
 
 void setup() {
+  #if 0
     rtc_wdt_protect_off();    // Turns off the automatic wdt service
 rtc_wdt_enable();         // Turn it on manually
 rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let dog wait.
-    
+#endif
+
+  pinMode(LED1, OUTPUT);
+  pinMode(LED2, OUTPUT);
+  pinMode(LED3, OUTPUT);
+  pinMode(LED4, OUTPUT);
+  pinMode(LED5, OUTPUT);
+  pinMode(LED6, OUTPUT);
+  pinMode(LED7, OUTPUT);
+  pinMode(LED8, OUTPUT);
+  pinMode(LED9, OUTPUT);
+  pinMode(LED10, OUTPUT);
+  pinMode(LED11, OUTPUT);
+  pinMode(LED12, OUTPUT);
+  pinMode(LED13, OUTPUT);
+  pinMode(LED14, OUTPUT);
+  pinMode(LED15, OUTPUT);
+  pinMode(LED16, OUTPUT);
+  
+
+#ifdef USE_MODBUS  
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
     // communicate with Modbus slave ID 1 over RS485
     node.begin(1, rs485);
+#endif
 
     Serial.begin(115200);
 
     delay(1000);
 
+#ifdef USE_WIFI
     // Set up the ESP32 as an access point
     WiFi.softAP(ssid, password);
+#endif
 
     // Initialize SPIFFS
     if (!SPIFFS.begin(true)) {
@@ -243,6 +307,7 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
     server.begin();
 #else    
 
+#ifdef USE_WIFI
     // Serve static files from SPIFFS
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
 
@@ -292,12 +357,22 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
     // Start the server
     server.begin();
   #endif
+  #endif
+delay(1000);
 
+   pinMode(LED12, OUTPUT);
+    digitalWrite(LED12, LOW);
+    pinMode(LED6, OUTPUT);
+    digitalWrite(LED6, LOW);
+    
+#ifdef USE_WIFI
     Serial.println("Server started");
+#endif
 }
 
 bool isDiscreteInputTrue(uint16_t u16ReadAddress)
 {
+#ifdef USE_MODBUS  
     uint8_t result = node.readDiscreteInputs(u16ReadAddress, 1);
     
     // do something with data if read is successful
@@ -310,7 +385,7 @@ bool isDiscreteInputTrue(uint16_t u16ReadAddress)
     Serial.print("Error code: ");
     Serial.println(result);
   }
-
+#endif
   return false;
 }
 
@@ -324,6 +399,12 @@ bool isClosed()
   return isDiscreteInputTrue(1);
 }
 
+void SetLEDs(uint16_t value)
+{
+  Serial.print("SetLEDs ");
+  Serial.println((value & 1) != 0 ? "HIGH":"LOW");
+    digitalWrite(LED1, (value & 1) != 0 ? HIGH:LOW);
+}
 
 void loop() {
 #ifdef TEST_CYCLES
@@ -423,18 +504,28 @@ void loop() {
       break;
       default:
       num[i] = 0;
-      reading_number = 0;
+      if(reading_number == 'g')
+      {
     uint16_t percentage = atoi(num);
     i = 0;
+#ifdef USE_MODBUS  
     node.writeSingleRegister(0,percentage);
+#endif
     Serial.print("go to percentage: ");
     Serial.println(percentage);
+      }
+      else if(reading_number == 'L')
+      {
+        SetLEDs(atoi(num));
+      }
+      reading_number = 0;
 
     delay(100);
     
+#ifdef USE_MODBUS  
       // tell actuator to move to that percentage
       node.writeSingleCoil(2, 1);
-      
+#endif      
       break;
     }
     }
@@ -442,11 +533,15 @@ void loop() {
     { // not reading_number
     if (c == 'o') {
       // tell actuator to open
+#ifdef USE_MODBUS  
       node.writeSingleCoil(0, 1);
+#endif
     }
     if (c == 'c') {
       // tell actuator to close
+#ifdef USE_MODBUS  
       node.writeSingleCoil(1, 1);
+#endif
     }
     if(c == 'g')
     {
@@ -454,7 +549,9 @@ void loop() {
    }
     if (c == 's') {
       // tell actuator to stop
+#ifdef USE_MODBUS  
       node.writeSingleCoil(3, 1);
+#endif
     }
     if (c == 'b') {
         printInputRegister(0, "  battery = ");
@@ -469,6 +566,7 @@ void loop() {
         printInputRegister(3, "  working angle = ");
     }
     if (c == 'd') {
+#ifdef USE_MODBUS  
         result = node.readInputRegisters(0, 4);
         
         // do something with data if read is successful
@@ -489,13 +587,20 @@ void loop() {
           Serial.print("Error code: ");
           Serial.println(result);
         }
+#endif
     }
+#ifdef USE_MODBUS
     if (c == 'O') printDiscreteInput(0, "Open Relay = ");
     if (c == 'C') printDiscreteInput(1, "Closed Relay = ");
     if (c == 'm') printDiscreteInput(2, "moving = ");
     if (c == 't') printDiscreteInput(3, "failed to complete = ");
     if (c == 'l') printDiscreteInput(4, "too low to move = ");
+#endif
+    if (c == 'L')
+          reading_number = 'L';
+
     if (c == 'D') {
+#ifdef USE_MODBUS
         result = node.readDiscreteInputs(0, 5);
         
         // do something with data if read is successful
@@ -518,12 +623,15 @@ void loop() {
         Serial.print("Error code: ");
         Serial.println(result);
       }
+#endif
     }
 
     }
   }
   #endif 
 
+#if 0
    // Reset the watchdog timer
     rtc_wdt_feed();
+    #endif
 }

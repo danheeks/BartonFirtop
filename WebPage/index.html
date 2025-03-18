@@ -20,18 +20,6 @@
             max-width: 100%; /* Ensures it doesn't overflow */
         }        
         
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: none; /* Remove width constraints */
-        }
-        
-        .header img {
-            height: 50px;
-        }
-
         .controls {
             display: flex;
             justify-content: center; /* Center the buttons */
@@ -49,17 +37,17 @@
         }
 
         .open-a {
-            background-color: #28a745;
+            background-color: #005596;
             color: white;
         }
 
         .auto {
-            background-color: #e9ecef;
+            background-color: #d0d0d0;
             color: black;
         }
 
         .open-b {
-            background-color: #0056b3;
+            background-color: #005596;
             color: white;
         }
 
@@ -197,6 +185,18 @@
             font-size: 24px;
             margin-bottom: 20px;
         }
+        
+        .footer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: none; /* Remove width constraints */
+        }
+        
+        .footer img {
+            height: 100px;
+        }
     </style>
 </head>
 <body>
@@ -214,11 +214,6 @@
 
     <div class="content" id="content">
         <div id="controlPage" class="page active">
-            <div class="header">
-                <div></div>
-                <img src="logo.png" alt="Barton Firtop Logo">
-            </div>
-            
             <div style="display: flex; justify-content: center; width: 100%;">
                 <svg id="svg-container" width="200" height="180" xmlns="http://www.w3.org/2000/svg">
                     <!-- Static Housing Image -->
@@ -230,25 +225,25 @@
             </div>
             
             <div class="controls">
-                <button class="open-a" onclick="sendRequest('openA')">Open A</button>
+                <button class="open-a" onclick="sendRequest('openA')">Chamber 'A'</button>
                 <button class="auto" onclick="sendRequest('auto')">Auto</button>
-                <button class="open-b" onclick="sendRequest('openB')">Open B</button>
+                <button class="open-b" onclick="sendRequest('openB')">Chamber 'B'</button>
             </div>
 
             <div class="status">
                 <div class="status-column">
-                    <div class="status-item"><span class="green"></span> Chamber "A" On-Line</div>
-                    <div class="status-item"><span class="gray"></span> Chamber "A" Standby</div>
-                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="green"></span> Chamber 'A' On-Line</div>
+                    <div class="status-item"><span class="gray"></span> Chamber 'A' Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure 'A'</div>
                     <div class="status-item"><span class="gray"></span> Equalization Valve</div>
                     <div class="status-item"><span class="gray"></span> Maintenance Required</div>
                     <div class="status-item"><span class="gray"></span> Solar Power</div>
                 </div>
 
                 <div class="status-column">
-                    <div class="status-item"><span class="gray"></span> Chamber "B" On-Line</div>
-                    <div class="status-item"><span class="red"></span> Chamber "B" Standby</div>
-                    <div class="status-item"><span class="gray"></span> Differential Pressure</div>
+                    <div class="status-item"><span class="gray"></span> Chamber 'B' On-Line</div>
+                    <div class="status-item"><span class="red"></span> Chamber 'B' Standby</div>
+                    <div class="status-item"><span class="gray"></span> Differential Pressure 'B'</div>
                     <div class="status-item"><span class="gray"></span> Changeover Active</div>
                     <div class="status-item"><span class="gray"></span> System Fault</div>
                     <div class="status-item"><span class="green"></span> External Power</div>
@@ -256,6 +251,10 @@
             </div>
 
             <button class="stop" onclick="sendRequest('stop')">STOP</button>
+            <div class="footer">
+                <div></div>
+                <img src="logo.png" alt="Barton Firtop Logo">
+            </div>
         </div>
 
         <div id="settingsPage" class="page">
