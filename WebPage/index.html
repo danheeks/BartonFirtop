@@ -301,14 +301,22 @@
 
             fetch('/angle')
                 .then(response => response.text())
-                .then(data => document.getElementById('angle').textContent = data + '°')
+                .then(data => 
+                {
+                    document.getElementById('angle').textContent = data + '°';
+                    console.log(data);
+                })
                 .catch(error => console.error('Error fetching angle:', error));
 
             fetch('/status')
                 .then(response => response.text())
-                .then(data => document.getElementById('status').textContent = data)
+                .then(data => {
+                    document.getElementById('status').textContent = data;
+                    console.log(data);
+                })
                 .catch(error => console.error('Error fetching status:', error));
         }, 1000);
+        
         function updateValvePosition(x, y) {
             const valve = document.getElementById("valve");
             valve.setAttribute("x", x);
@@ -325,17 +333,6 @@
             .then(data => console.log(data))
             .catch(error => console.error('Error:', error));
         }
-
-        // Example of fetching position updates from the ESP32
-        setInterval(() => {
-            fetch('/valve-position')
-                .then(response => response.json())
-                .then(data => {
-                    // Update the valve position with new coordinates
-                    updateValvePosition(data.x, data.y);
-                })
-                .catch(error => console.error('Error fetching valve position:', error));
-        }, 1000); // Fetch every second
     </script>
 </body>
 </html>

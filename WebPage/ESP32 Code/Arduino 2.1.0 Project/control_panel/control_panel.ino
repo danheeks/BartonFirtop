@@ -7,11 +7,13 @@
 #include <HardwareSerial.h>
 #include "soc/rtc_wdt.h"
 
-//#define TEST_CYCLES
 
-//#define USE_MODBUS
+#define USE_MODBUS
 #define USE_WIFI
+#define USE_LEDS
+//#define USE_WATCHDOG
 
+#ifdef USE_LEDS
 #define LED1 13
 #define LED2 12
 #define LED3 14
@@ -28,6 +30,7 @@
 #define LED14 18
 #define LED15 19
 #define LED16 21
+#endif
 
 // connections RS485 module to Arduino
 // GND to GND
@@ -35,6 +38,8 @@
 // RXD to D2 ( set as RX_PIN below )
 // TXD to D4 ( set as TX_PIN below )
 
+#define STATUS_OK 0
+#define STATUS_MODBUS_ERROR 1
 
 // type these letters, then Enter to do:
 // o - move to open position
@@ -57,76 +62,17 @@
 // Set your WiFi credentials
 const char* ssid = "BartonFirtop-Control";
 const char* password = "123456789";
-float valveX = 100; // Initial X position
-float valveY = 100; // Initial Y position
+uint16_t angle = 0;
+uint8_t status = STATUS_OK;
+uint8_t modbus_error = 0;
+
+unsigned long myTime;
+
+myTime = millis();
 
 // Create an instance of the web server
 #ifdef USE_WIFI
 AsyncWebServer server(80);
-#endif
-#ifdef TEST_CYCLES
-AsyncWebSocket ws("/ws");
-
-#define STATUS_READY 0
-#define STATUS_CLOSING 1
-#define STATUS_OPENING 2
-#define STATUS_WAITING 3
-
-int cycleCount = 0;
-int maxCycles = 0;
-int waitTime = 20; // Default wait time in seconds
-int status = STATUS_READY;
-bool next_move_is_open = false; // start with close move
-int timeWaited = 0;
-
-void notifyClients() {
-  String status_string = "";
-  switch(status)
-  {
-    case STATUS_READY:
-      status_string = "Ready...";
-      break;
-    case STATUS_OPENING:
-      status_string = "Opening...";
-      break;
-    case STATUS_CLOSING:
-      status_string = "Closing...";
-      break;
-    case STATUS_WAITING:
-      status_string = "Waiting time, time waited = " + String(timeWaited/2);
-      break;
-  }
-    String message = String("{\"cycleDone\":") + cycleCount + ", \"status\":\"" + status_string + "\"}";
-    ws.textAll(message);
-}
-
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
-    AwsFrameInfo *info = (AwsFrameInfo*)arg;
-    if (info->opcode == WS_TEXT) {
-        String msg = String((char*)data).substring(0, len);
-        if (msg.startsWith("start:")) {
-            maxCycles = msg.substring(6).toInt();
-            status = STATUS_WAITING;
-            next_move_is_open = true;
-            timeWaited = waitTime * 2;
-        }
-        else if (msg == "stop") {
-            stopActuator();
-            Serial.println("stop");
-            status = STATUS_READY;
-        } 
-        else if (msg.startsWith("waitTime:")) {
-            waitTime = msg.substring(9).toInt();
-        }
-        notifyClients();
-    }
-}
-
-void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type, void *arg, uint8_t *data, size_t len) {
-    if (type == WS_EVT_DATA) {
-        handleWebSocketMessage(arg, data, len);
-    }
-}
 #endif
 
 #ifdef USE_MODBUS
@@ -168,12 +114,10 @@ void stopActuator()
 
 // Functions triggered by button presses
 void handleOpenA() {
-#ifdef USE_MODBUS  
     Serial.println("Open A pressed");
     // Add your logic here
     // tell actuator to close
-    node.writeSingleCoil(1, 1);
-#endif
+    closeActuator();
 }
 
 void handleAuto() {
@@ -185,26 +129,33 @@ void handleOpenB() {
     Serial.println("Open B pressed");
     // Add your logic here
     // tell actuator to open
-#ifdef USE_MODBUS  
-    node.writeSingleCoil(0, 1);
-#endif
+    openActuator();
 }
 
 void handleStop() {
     Serial.println("STOP pressed");
     // Add your logic here
     // tell actuator to stop
-#ifdef USE_MODBUS  
-      node.writeSingleCoil(3, 1);
-#endif
+    stopActuator();
 }
 
-// Function to handle the "/valve-position" endpoint
-void handleValvePosition(AsyncWebServerRequest *request) {
-    Serial.print("Handling Valve position");
-    String json = "{ \"x\": " + String(valveX) + ", \"y\": " + String(valveY) + " }";
-    Serial.println(json);
-    request->send(200, "application/json", json);
+void handleBatteryVoltage(AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", String(14.0));
+}
+
+void handleAngle(AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", String(angle));
+}
+
+void handleStatus(AsyncWebServerRequest *request) {
+  String status_str = "OK";
+  switch(status)
+  {
+    case STATUS_MODBUS_ERROR:
+      status_str = String("Modbus Error: ") + String(modbus_error);
+      break;
+  }
+    request->send(200, "text/plain", status_str);
 }
 
 void printInputRegister(uint16_t u16ReadAddress, char* str)
@@ -222,6 +173,27 @@ void printInputRegister(uint16_t u16ReadAddress, char* str)
   {
     Serial.print("Error code: ");
     Serial.println(result);
+  }
+#endif
+}
+
+uint16_t getInputRegister(uint16_t u16ReadAddress)
+{
+#ifdef USE_MODBUS
+  modbus_error = 0;
+  uint8_t result = node.readInputRegisters(u16ReadAddress, 1);
+        
+  // do something with data if read is successful
+  if (result == node.ku8MBSuccess)
+  {
+    return (uint16_t)(node.getResponseBuffer(0));
+  }
+  else
+  {
+    Serial.print("Error code: ");
+    Serial.println(result);
+    modbus_error = result;
+    return 0;
   }
 #endif
 }
@@ -246,12 +218,13 @@ void printDiscreteInput(uint16_t u16ReadAddress, char* str)
 }
 
 void setup() {
-  #if 0
+#ifdef USE_WATCHDOG
     rtc_wdt_protect_off();    // Turns off the automatic wdt service
 rtc_wdt_enable();         // Turn it on manually
 rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let dog wait.
 #endif
 
+#ifdef USE_LEDS
   pinMode(LED1, OUTPUT);
   pinMode(LED2, OUTPUT);
   pinMode(LED3, OUTPUT);
@@ -268,7 +241,7 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
   pinMode(LED14, OUTPUT);
   pinMode(LED15, OUTPUT);
   pinMode(LED16, OUTPUT);
-  
+#endif  
 
 #ifdef USE_MODBUS  
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -291,21 +264,6 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
         Serial.println("Failed to mount SPIFFS");
         return;
     }
-
-#ifdef TEST_CYCLES
-    ws.onEvent(onWebSocketEvent);
-    server.addHandler(&ws);
-
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/index.html", "text/html");
-    });
-
-    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/script.js", "application/javascript");
-    });
-
-    server.begin();
-#else    
 
 #ifdef USE_WIFI
     // Serve static files from SPIFFS
@@ -351,19 +309,21 @@ rtc_wdt_set_time(RTC_WDT_STAGE0, 5000);  // Define how long you desire to let do
         }
     );
 
-    // Define the "/valve-position" route
-    server.on("/valve-position", HTTP_GET, handleValvePosition);
+    server.on("/battery-voltage", HTTP_GET, handleBatteryVoltage);
+    server.on("/angle", HTTP_GET, handleAngle);
+    server.on("/status", HTTP_GET, handleStatus);
 
     // Start the server
     server.begin();
   #endif
-  #endif
 delay(1000);
 
+#if 1
    pinMode(LED12, OUTPUT);
     digitalWrite(LED12, LOW);
     pinMode(LED6, OUTPUT);
     digitalWrite(LED6, LOW);
+#endif
     
 #ifdef USE_WIFI
     Serial.println("Server started");
@@ -399,71 +359,34 @@ bool isClosed()
   return isDiscreteInputTrue(1);
 }
 
+#ifdef USE_LEDS
+int delay_count = 0;
+int led_test_count = 0;
+#endif
+
 void SetLEDs(uint16_t value)
 {
-  Serial.print("SetLEDs ");
-  Serial.println((value & 1) != 0 ? "HIGH":"LOW");
+#ifdef USE_LEDS
     digitalWrite(LED1, (value & 1) != 0 ? HIGH:LOW);
+    digitalWrite(LED2, (value & 2) != 0 ? HIGH:LOW);
+    digitalWrite(LED3, (value & 4) != 0 ? HIGH:LOW);
+    digitalWrite(LED4, (value & 8) != 0 ? HIGH:LOW);
+    digitalWrite(LED5, (value & 16) != 0 ? HIGH:LOW);
+    digitalWrite(LED6, (value & 32) != 0 ? HIGH:LOW);
+    digitalWrite(LED7, (value & 64) != 0 ? HIGH:LOW);
+    digitalWrite(LED8, (value & 128) != 0 ? HIGH:LOW);
+    digitalWrite(LED9, (value & 0x100) != 0 ? HIGH:LOW);
+    digitalWrite(LED10, (value & 0x200) != 0 ? HIGH:LOW);
+    digitalWrite(LED11, (value & 0x400) != 0 ? HIGH:LOW);
+    digitalWrite(LED12, (value & 0x800) != 0 ? HIGH:LOW);
+    digitalWrite(LED13, (value & 0x1000) != 0 ? HIGH:LOW);
+    digitalWrite(LED14, (value & 0x2000) != 0 ? HIGH:LOW);
+    digitalWrite(LED15, (value & 0x4000) != 0 ? HIGH:LOW);
+    digitalWrite(LED16, (value & 0x8000) != 0 ? HIGH:LOW);
+#endif
 }
 
 void loop() {
-#ifdef TEST_CYCLES
-  switch(status)
-  {
-    case STATUS_OPENING:
-    {
-      if(isOpen())
-      {
-          status = STATUS_WAITING;
-          timeWaited = 0;
-      }
-    }
-    break;
-
-    case STATUS_CLOSING:
-    {
-      if(isClosed())
-      {
-        Serial.println("is Closed");
-        cycleCount++;
-        if(cycleCount >= maxCycles)
-        {
-          status = STATUS_READY;
-        }
-        else
-        {
-          status = STATUS_WAITING;
-          timeWaited = 0;
-        }
-      }
-    }
-    break;
-
-    case STATUS_WAITING:
-    {
-      timeWaited++;
-      if(timeWaited >= waitTime * 2)
-      {
-            if(next_move_is_open)
-            {
-              openActuator();
-              status = STATUS_OPENING;
-              next_move_is_open = false;
-           }
-            else
-            {
-              closeActuator();
-              status = STATUS_CLOSING;
-              next_move_is_open = true;
-            }
-      }
-    }
-    break;
-  }
-
-  notifyClients();
-  delay(500);
- #else
   uint8_t result;
   uint16_t data;
   
@@ -628,9 +551,42 @@ void loop() {
 
     }
   }
-  #endif 
 
-#if 0
+  angle = getInputRegister(1);
+if(modbus_error == 0)
+{
+    Serial.print("Modbus Success Angle = ");
+    Serial.println(angle);
+}  
+  status = STATUS_OK;
+  if(modbus_error != 0)
+  {
+    status = STATUS_MODBUS_ERROR;
+  }
+
+#ifdef USE_LEDS
+if(delay_count == 0)
+{
+  uint16_t led_value = 0x0001;
+  for(int i = 0; i<16;i++)
+  {
+  // led test
+  SetLEDs(led_value);
+  led_value <<=1;
+  delay(200);
+  }
+
+  led_test_count++;
+  Serial.print("LED test ");
+  Serial.println(led_test_count);
+}
+#endif
+
+  delay(2000);
+  delay_count++;
+  if(delay_count == 30)delay_count = 0;
+
+#ifdef USE_WATCHDOG
    // Reset the watchdog timer
     rtc_wdt_feed();
     #endif
