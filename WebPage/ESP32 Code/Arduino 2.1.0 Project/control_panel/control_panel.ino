@@ -44,10 +44,11 @@
 // Set your WiFi credentials
 const char* ssid = "BartonFirtop-Control";
 const char* password = "123456789";
-uint16_t angle = 0;
+uint16_t position = 0;
 uint8_t status = STATUS_OK;
 uint8_t modbus_error = 0;
 unsigned long oldTime;
+uint16_t led_value = 0;
 
 // Create an instance of the web server
 #ifdef USE_WIFI
@@ -94,6 +95,7 @@ void stopActuator()
 // Functions triggered by button presses
 void handleOpenA() {
     Serial.println("Open A pressed");
+    SetLEDs(0x0001);
     // Add your logic here
     // tell actuator to close
     closeActuator();
@@ -106,6 +108,7 @@ void handleAuto() {
 
 void handleOpenB() {
     Serial.println("Open B pressed");
+    SetLEDs(0x0100);
     // Add your logic here
     // tell actuator to open
     openActuator();
@@ -113,6 +116,7 @@ void handleOpenB() {
 
 void handleStop() {
     Serial.println("STOP pressed");
+    SetLEDs(0x0000);
     // Add your logic here
     // tell actuator to stop
     stopActuator();
@@ -122,8 +126,12 @@ void handleBatteryVoltage() {
     server.send(200, "text/plain", String(14.0));
 }
 
-void handleAngle() {
-    server.send(200, "text/plain", String(angle));
+void handlePosition() {
+    server.send(200, "text/plain", String(position));
+}
+
+void handleLeds() {
+    server.send(200, "text/plain", String(led_value));
 }
 
 void handleStatus() {
@@ -195,39 +203,6 @@ void printDiscreteInput(uint16_t u16ReadAddress, char* str)
   }
 #endif
 }
-
-const char* htmlPage = R"rawliteral(
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barton Firtop Dashboard</title>
-    <style>
-        /* Add your styles here */
-    </style>
-</head>
-<body>
-    <button class="open-a" onclick="sendRequest('openA')">Open A</button>
-    <button class="auto" onclick="sendRequest('auto')">Auto</button>
-    <button class="open-b" onclick="sendRequest('openB')">Open B</button>
-    <button class="stop" onclick="sendRequest('stop')">STOP</button>
-
-    <script>
-        function sendRequest(action) {
-            fetch('/action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: action })
-            })
-            .then(response => response.text())
-            .then(data => console.log(data))
-            .catch(error => console.error('Error:', error));
-        }
-    </script>
-</body>
-</html>
-)rawliteral";
 
 void handleRoot() {
     File file = SPIFFS.open("/index.html", "r");
@@ -370,7 +345,8 @@ void setup() {
     server.on("/", HTTP_GET, handleRoot);
      server.on("/action", HTTP_POST, handlePostAction);
    server.on("/battery-voltage", HTTP_GET, handleBatteryVoltage);
-    server.on("/angle", HTTP_GET, handleAngle);
+    server.on("/position", HTTP_GET, handlePosition);
+    server.on("/leds", HTTP_GET, handleLeds);
     server.on("/status", HTTP_GET, handleStatus);
     server.onNotFound(handleFileRequest);  // Serve static files from SPIFFS
 
@@ -379,12 +355,12 @@ void setup() {
   #endif
 delay(1000);
 
-#if 1
+    // set these LEDs as output again, after they were messed up by the wifi initialisation
+
    pinMode(LED12, OUTPUT);
     digitalWrite(LED12, LOW);
     pinMode(LED6, OUTPUT);
     digitalWrite(LED6, LOW);
-#endif
     
 #ifdef USE_WIFI
     Serial.println("Server started");
@@ -420,49 +396,27 @@ bool isClosed()
   return isDiscreteInputTrue(1);
 }
 
-#ifdef USE_LEDS
-int delay_count = 0;
-int led_test_count = 0;
-#endif
-
 void SetLEDs(uint16_t value)
 {
 #ifdef USE_LEDS
-    digitalWrite(LED1, (value & 1) != 0 ? HIGH:LOW);
-    digitalWrite(LED2, (value & 2) != 0 ? HIGH:LOW);
-    digitalWrite(LED3, (value & 4) != 0 ? HIGH:LOW);
-    digitalWrite(LED4, (value & 8) != 0 ? HIGH:LOW);
-    digitalWrite(LED5, (value & 16) != 0 ? HIGH:LOW);
-    digitalWrite(LED6, (value & 32) != 0 ? HIGH:LOW);
-    digitalWrite(LED7, (value & 64) != 0 ? HIGH:LOW);
-    digitalWrite(LED8, (value & 128) != 0 ? HIGH:LOW);
-    digitalWrite(LED9, (value & 0x100) != 0 ? HIGH:LOW);
-    digitalWrite(LED10, (value & 0x200) != 0 ? HIGH:LOW);
-    digitalWrite(LED11, (value & 0x400) != 0 ? HIGH:LOW);
-    digitalWrite(LED12, (value & 0x800) != 0 ? HIGH:LOW);
+    digitalWrite(LED1, (value & 0x0001) != 0 ? HIGH:LOW);
+    digitalWrite(LED2, (value & 0x0002) != 0 ? HIGH:LOW);
+    digitalWrite(LED3, (value & 0x0004) != 0 ? HIGH:LOW);
+    digitalWrite(LED4, (value & 0x0008) != 0 ? HIGH:LOW);
+    digitalWrite(LED5, (value & 0x0010) != 0 ? HIGH:LOW);
+    digitalWrite(LED6, (value & 0x0020) != 0 ? HIGH:LOW);
+    digitalWrite(LED7, (value & 0x0040) != 0 ? HIGH:LOW);
+    digitalWrite(LED8, (value & 0x0080) != 0 ? HIGH:LOW);
+    digitalWrite(LED9, (value & 0x0100) != 0 ? HIGH:LOW);
+    digitalWrite(LED10, (value & 0x0200) != 0 ? HIGH:LOW);
+    digitalWrite(LED11, (value & 0x0400) != 0 ? HIGH:LOW);
+    digitalWrite(LED12, (value & 0x0800) != 0 ? HIGH:LOW);
     digitalWrite(LED13, (value & 0x1000) != 0 ? HIGH:LOW);
     digitalWrite(LED14, (value & 0x2000) != 0 ? HIGH:LOW);
     digitalWrite(LED15, (value & 0x4000) != 0 ? HIGH:LOW);
     digitalWrite(LED16, (value & 0x8000) != 0 ? HIGH:LOW);
 #endif
-}
-
-void LEDTest()
-{
-#ifdef USE_LEDS
-  uint16_t led_value = 0x0001;
-  for(int i = 0; i<16;i++)
-  {
-  // led test
-  SetLEDs(led_value);
-  led_value <<=1;
-  delay(200);
-  }
-
-  led_test_count++;
-  Serial.print("LED test ");
-  Serial.println(led_test_count);
-#endif
+    led_value = value;
 }
 
 void loop() {
@@ -472,23 +426,15 @@ void loop() {
   if(newTime > oldTime + 2000)
   {
     oldTime = newTime;
-    angle = getInputRegister(1);
+    position = getInputRegister(1);
     if(modbus_error == 0)
     {
-      Serial.print("Modbus Success Angle = ");
-      Serial.println(angle);
       status = STATUS_OK;
     }  
     else
     {
       status = STATUS_MODBUS_ERROR;
     }
-
-    if(delay_count == 0)
-      LEDTest();
-    delay_count++;
-    if(delay_count >= 30)
-      delay_count = 0;
   }
 
 #ifdef USE_WATCHDOG

@@ -102,13 +102,28 @@
     margin-right: 0; /* Removes the default right margin */
 }
         .green {
-            background-color: #28a745;
+            background-color: #608060;  /* Duller green (grayish) */
+        }
+
+        .bright-green {
+            background-color: #00ff00;  /* Bright green */
         }
 
         .red {
-            background-color: #dc3545;
+            background-color: #806060;  /* Duller red (grayish) */
         }
 
+        .bright-red {
+            background-color: #ff0000;  /* Bright red */
+        }
+
+        .yellow {
+            background-color: #808060;  /* Duller yellow (grayish) */
+        }
+
+        .bright-yellow {
+            background-color: #ffff00;  /* Bright yellow */
+        }
         .gray {
             background-color: #6c757d;
         }
@@ -232,21 +247,25 @@
 
             <div class="status">
                 <div class="status-column">
-                    <div class="status-item"><span class="green"></span> Chamber 'A' On-Line</div>
-                    <div class="status-item"><span class="gray"></span> Chamber 'A' Standby</div>
-                    <div class="status-item"><span class="gray"></span> Differential Pressure 'A'</div>
-                    <div class="status-item"><span class="gray"></span> Equalization Valve</div>
-                    <div class="status-item"><span class="gray"></span> Maintenance Required</div>
-                    <div class="status-item"><span class="gray"></span> Solar Power</div>
+                    <div class="status-item"><span id = "led1" class="green"></span> Chamber 'A' On-Line</div>
+                    <div class="status-item"><span id = "led2" class="red"></span> Chamber 'A' Off-Line</div>
+                    <div class="status-item"><span id = "led3" class="yellow"></span> Chamber 'A' Standby</div>
+                    <div class="status-item"><span id = "led4" class="green"></span> Diff Press OK 'A'</div>
+                    <div class="status-item"><span id = "led5" class="red"></span> Diff Press High 'A'</div>
+                    <div class="status-item"><span id = "led6" class="yellow"></span> Equalization Valve</div>
+                    <div class="status-item"><span id = "led7" class="yellow"></span> Maintenance Required</div>
+                    <div class="status-item"><span id = "led8" class="yellow"></span> Solar Power</div>
                 </div>
 
                 <div class="status-column">
-                    <div class="status-item"><span class="gray"></span> Chamber 'B' On-Line</div>
-                    <div class="status-item"><span class="red"></span> Chamber 'B' Standby</div>
-                    <div class="status-item"><span class="gray"></span> Differential Pressure 'B'</div>
-                    <div class="status-item"><span class="gray"></span> Changeover Active</div>
-                    <div class="status-item"><span class="gray"></span> System Fault</div>
-                    <div class="status-item"><span class="green"></span> External Power</div>
+                    <div class="status-item"><span id = "led9" class="green"></span> Chamber 'B' On-Line</div>
+                    <div class="status-item"><span id = "led10" class="red"></span> Chamber 'B' Off-Line</div>
+                    <div class="status-item"><span id = "led11" class="yellow"></span> Chamber 'B' Standby</div>
+                    <div class="status-item"><span id = "led12" class="green"></span> Diff Press OK 'B'</div>
+                    <div class="status-item"><span id = "led13" class="red"></span> Diff Press High 'B'</div>
+                    <div class="status-item"><span id = "led14" class="yellow"></span> Changeover Active</div>
+                    <div class="status-item"><span id = "led15" class="red"></span> System Fault</div>
+                    <div class="status-item"><span id = "led16" class="green"></span> External Power</div>
                 </div>
             </div>
 
@@ -260,8 +279,9 @@
         <div id="settingsPage" class="page">
             <h1 class="section-title">Settings</h1>
             <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">12.0V</span></p>
-            <p><strong>Angle:</strong> <span id="angle">45°</span></p>
+            <p><strong>Position:</strong> <span id="position">0%</span></p>
             <p><strong>Status:</strong> <span id="status">OK</span></p>
+            <p><strong>LEDs:</strong> <span id="leds">0</span></p>
         </div>
     </div>
 
@@ -299,12 +319,230 @@
                 .then(data => document.getElementById('batteryVoltage').textContent = data + 'V')
                 .catch(error => console.error('Error fetching battery voltage:', error));
 
-            fetch('/angle')
+            fetch('/position')
                 .then(response => response.text())
                 .then(data => 
                 {
-                    document.getElementById('angle').textContent = data + '°';
+                    document.getElementById('position').textContent = data + '%';
                     console.log(data);
+                })
+                .catch(error => console.error('Error fetching angle:', error));
+
+            fetch('/leds')
+                .then(response => response.text())
+                .then(data => 
+                {
+                    document.getElementById('leds').textContent = data;
+                    data = parseInt(data, 10);
+        // LED 1 (Green)
+        led1 = document.getElementById('led1');
+        if((data & 0x0001) == 0)
+        {
+            led1.classList.remove("bright-green");
+            led1.classList.add("green");
+        }
+        else
+        {
+            led1.classList.remove("green");
+            led1.classList.add("bright-green");
+        }
+
+        // LED 2 (Red)
+        led2 = document.getElementById('led2');
+        if((data & 0x0002) == 0)
+        {
+            led2.classList.remove("bright-red");
+            led2.classList.add("red");
+        }
+        else
+        {
+            led2.classList.remove("red");
+            led2.classList.add("bright-red");
+        }
+
+        // LED 3 (Yellow)
+        led3 = document.getElementById('led3');
+        if((data & 0x0004) == 0)
+        {
+            led3.classList.remove("bright-yellow");
+            led3.classList.add("yellow");
+        }
+        else
+        {
+            led3.classList.remove("yellow");
+            led3.classList.add("bright-yellow");
+        }
+
+        // LED 4 (Green)
+        led4 = document.getElementById('led4');
+        if((data & 0x0008) == 0)
+        {
+            led4.classList.remove("bright-green");
+            led4.classList.add("green");
+        }
+        else
+        {
+            led4.classList.remove("green");
+            led4.classList.add("bright-green");
+        }
+
+        // LED 5 (Red)
+        led5 = document.getElementById('led5');
+        if((data & 0x0010) == 0)
+        {
+            led5.classList.remove("bright-red");
+            led5.classList.add("red");
+        }
+        else
+        {
+            led5.classList.remove("red");
+            led5.classList.add("bright-red");
+        }
+
+        // LED 6 (Yellow)
+        led6 = document.getElementById('led6');
+        if((data & 0x0020) == 0)
+        {
+            led6.classList.remove("bright-yellow");
+            led6.classList.add("yellow");
+        }
+        else
+        {
+            led6.classList.remove("yellow");
+            led6.classList.add("bright-yellow");
+        }
+
+        // LED 7 (Yellow)
+        led7 = document.getElementById('led7');
+        if((data & 0x0040) == 0)
+        {
+            led7.classList.remove("bright-yellow");
+            led7.classList.add("yellow");
+        }
+        else
+        {
+            led7.classList.remove("yellow");
+            led7.classList.add("bright-yellow");
+        }
+
+        // LED 8 (Yellow)
+        led8 = document.getElementById('led8');
+        if((data & 0x0080) == 0)
+        {
+            led8.classList.remove("bright-yellow");
+            led8.classList.add("yellow");
+        }
+        else
+        {
+            led8.classList.remove("yellow");
+            led8.classList.add("bright-yellow");
+        }
+
+        // LED 9 (Green)
+        led9 = document.getElementById('led9');
+        if((data & 0x0100) == 0)
+        {
+            led9.classList.remove("bright-green");
+            led9.classList.add("green");
+        }
+        else
+        {
+            led9.classList.remove("green");
+            led9.classList.add("bright-green");
+        }
+
+        // LED 10 (Red)
+        led10 = document.getElementById('led10');
+        if((data & 0x0200) == 0)
+        {
+            led10.classList.remove("bright-red");
+            led10.classList.add("red");
+        }
+        else
+        {
+            led10.classList.remove("red");
+            led10.classList.add("bright-red");
+        }
+
+        // LED 11 (Yellow)
+        led11 = document.getElementById('led11');
+        if((data & 0x0400) == 0)
+        {
+            led11.classList.remove("bright-yellow");
+            led11.classList.add("yellow");
+        }
+        else
+        {
+            led11.classList.remove("yellow");
+            led11.classList.add("bright-yellow");
+        }
+
+        // LED 12 (Green)
+        led12 = document.getElementById('led12');
+        if((data & 0x0800) == 0)
+        {
+            led12.classList.remove("bright-green");
+            led12.classList.add("green");
+        }
+        else
+        {
+            led12.classList.remove("green");
+            led12.classList.add("bright-green");
+        }
+
+        // LED 13 (Red)
+        led13 = document.getElementById('led13');
+        if((data & 0x1000) == 0)
+        {
+            led13.classList.remove("bright-red");
+            led13.classList.add("red");
+        }
+        else
+        {
+            led13.classList.remove("red");
+            led13.classList.add("bright-red");
+        }
+
+        // LED 14 (Yellow)
+        led14 = document.getElementById('led14');
+        if((data & 0x2000) == 0)
+        {
+            led14.classList.remove("bright-yellow");
+            led14.classList.add("yellow");
+        }
+        else
+        {
+            led14.classList.remove("yellow");
+            led14.classList.add("bright-yellow");
+        }
+
+        // LED 15 (Red)
+        led15 = document.getElementById('led15');
+        if((data & 0x4000) == 0)
+        {
+            led15.classList.remove("bright-red");
+            led15.classList.add("red");
+        }
+        else
+        {
+            led15.classList.remove("red");
+            led15.classList.add("bright-red");
+        }
+
+        // LED 16 (Green)
+        led16 = document.getElementById('led16');
+        if((data & 0x8000) == 0)
+        {
+            led16.classList.remove("bright-green");
+            led16.classList.add("green");
+        }
+        else
+        {
+            led16.classList.remove("green");
+            led16.classList.add("bright-green");
+        }
+        
+                            console.log(leds);
                 })
                 .catch(error => console.error('Error fetching angle:', error));
 
