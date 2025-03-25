@@ -72,6 +72,7 @@
             display: flex;
             flex-direction: column;
             align-items: flex-start;
+            min-width: 200px; /* Prevents wrapping */
         }
 
         .status-item {
@@ -87,20 +88,20 @@
             border-radius: 50%;
             display: inline-block;
         }
-.status-column:first-child {
-    align-items: flex-end; /* Aligns all items to the right */
-}
+        .status-column:first-child {
+            align-items: flex-end; /* Aligns all items to the right */
+        }
 
-.status-column:first-child .status-item {
-    flex-direction: row-reverse; /* Moves LEDs to the right of text */
-    justify-content: flex-end; /* Ensures alignment */
-    text-align: right; /* Aligns text to the right */
-}
+        .status-column:first-child .status-item {
+            flex-direction: row-reverse; /* Moves LEDs to the right of text */
+            justify-content: flex-end; /* Ensures alignment */
+            text-align: right; /* Aligns text to the right */
+        }
 
-.status-column:first-child .status-item span {
-    margin-left: 10px; /* Space between text and LED */
-    margin-right: 0; /* Removes the default right margin */
-}
+        .status-column:first-child .status-item span {
+            margin-left: 10px; /* Space between text and LED */
+            margin-right: 0; /* Removes the default right margin */
+        }
         .green {
             background-color: #608060;  /* Duller green (grayish) */
         }
@@ -192,6 +193,24 @@
             text-align: center;
             font-size: 20px;
         }
+        .setting-item, p {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            font-size: 16px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .setting-item input {
+            width: 80px; /* Adjust width to match text */
+            text-align: center;
+            font-size: 16px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f8f9fa; /* Light gray to resemble read-only fields */
+        }
         .content {
             margin-left: 250px;
             padding: 20px;
@@ -272,7 +291,7 @@
 
                 <!-- Countdown Timer -->
                 <div class="countdown-container">
-                    <span id="countdown" class="hidden"></span>
+                    <span id="seq" class="hidden"></span>
                 </div>
 
                 <div class="status-column">
@@ -296,11 +315,32 @@
 
         <div id="settingsPage" class="page">
             <h1 class="section-title">Settings</h1>
-            <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">Not Set</span></p>
-            <p><strong>Position:</strong> <span id="position">Not Set</span></p>
-            <p><strong>Status:</strong> <span id="status">Not Set</span></p>
-            <p><strong>LEDs:</strong> <span id="leds">Not Set</span></p>
-            <p><strong>Auto/Manual:</strong> <span id="automan">Not Set</span></p>
+
+            <div class="setting-item"><strong>Battery Voltage:</strong> <span id="batteryVoltage">Not Set</span></div>
+            <div class="setting-item"><strong>Position:</strong> <span id="position">Not Set</span></div>
+            <div class="setting-item"><strong>Status:</strong> <span id="status">Not Set</span></div>
+            <div class="setting-item"><strong>LEDs:</strong> <span id="leds">Not Set</span></div>
+            <div class="setting-item"><strong>Auto/Manual:</strong> <span id="automan">Not Set</span></div>
+
+            <div class="setting-item">
+                <strong>Wait Time 1 (secs):</strong> 
+                <input type="number" id="waitTime1" value="30" min="1" max="300" onchange="updateWaitTime1()">
+            </div>
+
+            <div class="setting-item">
+                <strong>Wait Time 2 (secs):</strong> 
+                <input type="number" id="waitTime2" value="15" min="1" max="300" onchange="updateWaitTime2()">
+            </div>
+
+            <div class="setting-item">
+                <strong>Wait Time 3 (secs):</strong> 
+                <input type="number" id="waitTime3" value="60" min="1" max="300" onchange="updateWaitTime3()">
+            </div>
+
+            <div class="setting-item">
+                <strong>Wait Time 4 (secs):</strong> 
+                <input type="number" id="waitTime4" value="300" min="1" max="1000" onchange="updateWaitTime4()">
+            </div>
         </div>
     </div>
 
@@ -347,23 +387,18 @@
                 })
                 .catch(error => console.error('Error fetching position:', error));
 
-            fetch('/countdown')
+            fetch('/seq')
                 .then(response => response.text())
                 .then(data => 
                 {
-                    let time = parseInt(data, 10);
-                    let countdownElement = document.getElementById("countdown");
-                    if(time > 0)
-                    {
-                        countdownElement.innerText = `Move in ${time} seconds`;
+                    let countdownElement = document.getElementById("seq");
+                    countdownElement.innerText = data;
+                    if(data.length > 0)
                         countdownElement.style.display = "block";  // Make it visible
-                    }
                     else
-                    {
                         countdownElement.style.display = "none"; // Hide when done
-                    }
                 })
-                .catch(error => console.error('Error fetching countdown:', error));
+                .catch(error => console.error('Error fetching seq:', error));
 
             fetch('/automan')
                 .then(response => response.text())
@@ -605,8 +640,80 @@
                     document.getElementById('status').textContent = data;
                 })
                 .catch(error => console.error('Error fetching status:', error));
+                                
         }, 500);
-        
+                
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/getWaitTime1")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime1").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time:", error));
+            fetch("/getWaitTime2")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime2").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time:", error));
+            fetch("/getWaitTime3")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime3").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time:", error));
+            fetch("/getWaitTime4")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime4").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time:", error));
+        });
+                
+        function updateWaitTime1() {
+            let waitTime1 = document.getElementById("waitTime1").value;
+            
+            fetch("/setWaitTime1", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime1: parseInt(waitTime1) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
+                
+        function updateWaitTime2() {
+            let waitTime2 = document.getElementById("waitTime2").value;
+            
+            fetch("/setWaitTime2", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime2: parseInt(waitTime2) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
+                
+        function updateWaitTime3() {
+            let waitTime3 = document.getElementById("waitTime3").value;
+            
+            fetch("/setWaitTime3", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime3: parseInt(waitTime3) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
+                
+        function updateWaitTime4() {
+            let waitTime4 = document.getElementById("waitTime4").value;
+            
+            fetch("/setWaitTime4", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime4: parseInt(waitTime4) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
+
         function updateValveTransform(position) {
             const valve = document.getElementById("valve");
             const cx = 100; // Rotation center X (adjust as needed)

@@ -32,6 +32,8 @@
 #define LED16 21
 #endif
 
+#define AB_PIN 34
+
 // connections RS485 module to Arduino
 // GND to GND
 // VCC to 5V
@@ -41,10 +43,14 @@
 #define STATUS_OK 0
 #define STATUS_MODBUS_ERROR 1
 
-#define SEQ_WAIT_BEFORE_MOVE_A 0
-#define SEQ_WAIT_BEFORE_MOVE_B 1
-#define SEQ_STATE_MOVE_TO_A 2
-#define SEQ_STATE_MOVE_TO_B 3
+#define SEQ_B_STANDBY 1
+#define SEQ_DP_HIGH_A 2
+#define SEQ_MOVE_TO_B 3
+#define SEQ_WAIT_AFTER_MOVE_B 4
+#define SEQ_A_STANDBY 5
+#define SEQ_DP_HIGH_B 6
+#define SEQ_MOVE_TO_A 7
+#define SEQ_WAIT_AFTER_MOVE_A 8
 
 // Set your WiFi credentials
 const char* ssid = "BartonFirtop-Control";
@@ -55,7 +61,13 @@ uint8_t modbus_error = 0;
 unsigned long oldTime;
 uint16_t led_value = 0;
 bool automan = false;
+uint8_t auto_seq = SEQ_B_STANDBY;
 uint8_t countdown = 0;
+int waitTime1 = 30; // Default value
+int waitTime2 = 15; // Default value
+int waitTime3 = 60; // Default value
+int waitTime4 = 300; // Default value
+int AB_switch = 0;
 
 // Create an instance of the web server
 #ifdef USE_WIFI
@@ -102,7 +114,6 @@ void stopActuator()
 // Functions triggered by button presses
 void handleOpenA() {
     Serial.println("Open A pressed");
-    SetLEDs(0x0001);
     // Add your logic here
     // tell actuator to close
     closeActuator();
@@ -113,14 +124,15 @@ void handleAuto() {
     automan = !automan;
     if(automan)
     {
-      countdown = 20;
+      // auto sequence start
+      auto_seq = SEQ_B_STANDBY;
+      countdown = waitTime1;
     }
     // Add your logic here
 }
 
 void handleOpenB() {
     Serial.println("Open B pressed");
-    SetLEDs(0x0100);
     // Add your logic here
     // tell actuator to open
     openActuator();
@@ -128,10 +140,10 @@ void handleOpenB() {
 
 void handleStop() {
     Serial.println("STOP pressed");
-    SetLEDs(0x0000);
     // Add your logic here
     // tell actuator to stop
     stopActuator();
+    automan = false;
 }
 
 void handleBatteryVoltage() {
@@ -142,8 +154,34 @@ void handlePosition() {
     server.send(200, "text/plain", String(position));
 }
 
-void handleCountdown() {
-    server.send(200, "text/plain", String(countdown));
+void handleSeq() {
+  // return sequence string. Empty if in Manual Mode
+  String seqstr;
+  if(automan)
+  {
+  switch(auto_seq)
+  {
+    case SEQ_B_STANDBY:
+    case SEQ_A_STANDBY:
+        seqstr = "DP High in " + String(countdown) + " seconds";
+        break;
+    case SEQ_DP_HIGH_A:
+    case SEQ_DP_HIGH_B:
+        seqstr = "Move in " + String(countdown) + " seconds";
+        break;
+    case SEQ_WAIT_AFTER_MOVE_B:
+    case SEQ_WAIT_AFTER_MOVE_A:
+        seqstr = "Waiting for " + String(countdown) + " seconds";
+        break;
+    case SEQ_MOVE_TO_A:
+        seqstr = "Moving to Chamber A";
+        break;
+    case SEQ_MOVE_TO_B:
+        seqstr = "Moving to Chamber B";
+        break;
+  }
+  }
+    server.send(200, "text/plain", seqstr);
 }
 
 void handleAutoMan() {
@@ -163,6 +201,66 @@ void handleStatus() {
       break;
   }
     server.send(200, "text/plain", status_str);
+}
+
+void handleGetWaitTime1() {
+    server.send(200, "text/plain", String(waitTime1));
+}
+
+void handleGetWaitTime2() {
+    server.send(200, "text/plain", String(waitTime2));
+}
+
+void handleGetWaitTime3() {
+    server.send(200, "text/plain", String(waitTime3));
+}
+
+void handleGetWaitTime4() {
+    server.send(200, "text/plain", String(waitTime4));
+}
+
+void handleSetWaitTime1() {
+    if (server.hasArg("plain")) {
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, server.arg("plain"));
+        waitTime1 = doc["waitTime1"];
+        server.send(200, "text/plain", "Wait1 time updated");
+    } else {
+        server.send(400, "text/plain", "Bad Request");
+    }
+}
+
+void handleSetWaitTime2() {
+    if (server.hasArg("plain")) {
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, server.arg("plain"));
+        waitTime2 = doc["waitTime2"];
+        server.send(200, "text/plain", "Wait2 time updated");
+    } else {
+        server.send(400, "text/plain", "Bad Request");
+    }
+}
+
+void handleSetWaitTime3() {
+    if (server.hasArg("plain")) {
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, server.arg("plain"));
+        waitTime3 = doc["waitTime3"];
+        server.send(200, "text/plain", "Wait3 time updated");
+    } else {
+        server.send(400, "text/plain", "Bad Request");
+    }
+}
+
+void handleSetWaitTime4() {
+    if (server.hasArg("plain")) {
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, server.arg("plain"));
+        waitTime4 = doc["waitTime4"];
+        server.send(200, "text/plain", "Wait4 time updated");
+    } else {
+        server.send(400, "text/plain", "Bad Request");
+    }
 }
 
 void printInputRegister(uint16_t u16ReadAddress, char* str)
@@ -340,6 +438,13 @@ void setup() {
   pinMode(LED15, OUTPUT);
   pinMode(LED16, OUTPUT);
 #endif  
+  pinMode(AB_PIN, INPUT_PULLUP);
+  pinMode(35, INPUT_PULLUP);
+
+  while(1)
+  {
+
+  }
 
 #ifdef USE_MODBUS  
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -369,10 +474,18 @@ void setup() {
      server.on("/action", HTTP_POST, handlePostAction);
    server.on("/battery-voltage", HTTP_GET, handleBatteryVoltage);
     server.on("/position", HTTP_GET, handlePosition);
-    server.on("/countdown", HTTP_GET, handleCountdown);
+    server.on("/seq", HTTP_GET, handleSeq);
     server.on("/automan", HTTP_GET, handleAutoMan);
     server.on("/leds", HTTP_GET, handleLeds);
     server.on("/status", HTTP_GET, handleStatus);
+    server.on("/getWaitTime1", HTTP_GET, handleGetWaitTime1);
+    server.on("/setWaitTime1", HTTP_POST, handleSetWaitTime1);
+    server.on("/getWaitTime2", HTTP_GET, handleGetWaitTime2);
+    server.on("/setWaitTime2", HTTP_POST, handleSetWaitTime2);
+    server.on("/getWaitTime3", HTTP_GET, handleGetWaitTime3);
+    server.on("/setWaitTime3", HTTP_POST, handleSetWaitTime3);
+    server.on("/getWaitTime4", HTTP_GET, handleGetWaitTime4);
+    server.on("/setWaitTime4", HTTP_POST, handleSetWaitTime4);
     server.onNotFound(handleFileRequest);  // Serve static files from SPIFFS
 
     // Start the server
@@ -444,12 +557,15 @@ void SetLEDs(uint16_t value)
     led_value = value;
 }
 
+bool every_other = false;
+
 void loop() {
   server.handleClient();  // Handle incoming requests
 
   unsigned long newTime = millis();
   if(newTime > oldTime + 1000)
   {
+    every_other = !every_other;
     oldTime = newTime;
 
     position = getInputRegister(1);
@@ -462,8 +578,159 @@ void loop() {
       status = STATUS_MODBUS_ERROR;
     }
 
-    if(countdown > 0)
-      countdown--;
+    // check state of AB switch
+    AB_switch = digitalRead(AB_PIN);
+
+    uint16_t new_led_state = 0x0000;
+    new_led_state |= 0x8000; // eXTERNAL pOWWER
+
+    if(modbus_error != 0)
+    {
+      new_led_state |= 0x4000; // system fault
+    }
+    else
+    {
+      // a, b, online
+      if(position == 0)
+      {
+        new_led_state |= 0x0001; // A On line
+        new_led_state |= 0x0200; // B Off Line
+      }
+      else if(position == 100)
+      {
+        new_led_state |= 0x0100; // B On line
+        new_led_state |= 0x0002; // A Off Line
+      }
+      else
+      {
+        if(every_other)new_led_state |= 0x2000; // Changeover Active Flashing
+      }
+    }
+
+    // debug the AB switch
+    if(AB_switch)new_led_state |= 0x0080; // light up solar power
+
+    // process auto sequence
+    if(automan)
+    {
+      switch(auto_seq)
+      {
+        case SEQ_B_STANDBY:
+            new_led_state |= 0x0400; // B Standby
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x0800; // DP B OK
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_DP_HIGH_A;
+              countdown = waitTime2;
+            }
+            break;
+
+        case SEQ_DP_HIGH_A:
+            new_led_state |= 0x0010; // DP A High
+            if(every_other)new_led_state |= 0x0400; // B Standby
+            new_led_state |= 0x0040; // Maintenance Required
+            new_led_state |= 0x0800; // DP B OK
+            new_led_state |= 0x2000; // Changeover Active
+            new_led_state |= 0x0020; // Equalisation Valve yellow
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_MOVE_TO_B;
+              delay(100);
+              openActuator();
+            }
+            break;
+        case SEQ_MOVE_TO_B:
+            // opening
+            new_led_state |= 0x0010; // DP A High
+            new_led_state |= 0x0800; // DP B OK
+            new_led_state |= 0x0040; // Maintenance Required
+            new_led_state |= 0x0020; // Equalisation Valve yellow
+            if(position == 100)
+            {
+                auto_seq = SEQ_WAIT_AFTER_MOVE_B;
+                countdown = waitTime3;
+            }            
+            break;
+        case SEQ_WAIT_AFTER_MOVE_B:
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x0800; // DP B OK
+            new_led_state |= 0x0040; // Maintenance Required
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_A_STANDBY;
+              countdown = waitTime4;
+            }
+            break;
+        case SEQ_A_STANDBY:
+            new_led_state |= 0x0004; // A Standby
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x0800; // DP B OK
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_DP_HIGH_B;
+              countdown = waitTime2;
+            }
+            break;
+        case SEQ_DP_HIGH_B:
+            new_led_state |= 0x1000; // DP B High
+            new_led_state |= 0x0040; // Maintenance Required
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x2000; // Changeover Active
+            new_led_state |= 0x0020; // Equalisation Valve yellow
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_MOVE_TO_A;
+              delay(100);
+              closeActuator();
+            }
+            break;
+        case SEQ_MOVE_TO_A:
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x1000; // DP B High
+            new_led_state |= 0x0040; // Maintenance Required
+            new_led_state |= 0x0020; // Equalisation Valve yellow
+            // closing
+            if(position == 0)
+            {
+                auto_seq = SEQ_B_STANDBY;
+                countdown = waitTime4;
+            }            
+            break;
+        case SEQ_WAIT_AFTER_MOVE_A:
+            new_led_state |= 0x0008; // DP A OK
+            new_led_state |= 0x0800; // DP B OK
+            new_led_state |= 0x0040; // Maintenance Required
+            if(countdown > 0)
+              countdown--;
+            if(countdown == 0)
+            {
+              auto_seq = SEQ_A_STANDBY;
+              countdown = waitTime4;
+            }
+            break;
+      }
+    }
+    else
+    {
+      // manual mode
+        new_led_state |= 0x0008; // DP A OK
+        new_led_state |= 0x0800; // DP B OK
+
+        // check AB switch
+    }
+
+    SetLEDs(new_led_state);
   }
 
 #ifdef USE_WATCHDOG
