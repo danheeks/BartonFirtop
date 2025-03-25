@@ -127,6 +127,19 @@
         .gray {
             background-color: #6c757d;
         }
+        .countdown-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            text-align: center;
+        }
+        #countdown {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6600; /* Orange */
+            display: none;  /* Hidden by default */
+        }
         .sidebar {
             height: 100vh;
             width: 250px;
@@ -241,7 +254,7 @@
             
             <div class="controls">
                 <button class="open-a" onclick="sendRequest('openA')">Chamber 'A'</button>
-                <button class="auto" onclick="sendRequest('auto')">Auto</button>
+                <button id = "auto" class="auto" onclick="sendRequest('auto')">Auto</button>
                 <button class="open-b" onclick="sendRequest('openB')">Chamber 'B'</button>
             </div>
 
@@ -255,6 +268,11 @@
                     <div class="status-item"><span id = "led6" class="yellow"></span> Equalization Valve</div>
                     <div class="status-item"><span id = "led7" class="yellow"></span> Maintenance Required</div>
                     <div class="status-item"><span id = "led8" class="yellow"></span> Solar Power</div>
+                </div>
+
+                <!-- Countdown Timer -->
+                <div class="countdown-container">
+                    <span id="countdown" class="hidden"></span>
                 </div>
 
                 <div class="status-column">
@@ -278,10 +296,11 @@
 
         <div id="settingsPage" class="page">
             <h1 class="section-title">Settings</h1>
-            <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">12.0V</span></p>
-            <p><strong>Position:</strong> <span id="position">0%</span></p>
-            <p><strong>Status:</strong> <span id="status">OK</span></p>
-            <p><strong>LEDs:</strong> <span id="leds">0</span></p>
+            <p><strong>Battery Voltage:</strong> <span id="batteryVoltage">Not Set</span></p>
+            <p><strong>Position:</strong> <span id="position">Not Set</span></p>
+            <p><strong>Status:</strong> <span id="status">Not Set</span></p>
+            <p><strong>LEDs:</strong> <span id="leds">Not Set</span></p>
+            <p><strong>Auto/Manual:</strong> <span id="automan">Not Set</span></p>
         </div>
     </div>
 
@@ -324,9 +343,44 @@
                 .then(data => 
                 {
                     document.getElementById('position').textContent = data + '%';
-                    console.log(data);
+                    updateValveTransform(parseInt(data, 10));
                 })
-                .catch(error => console.error('Error fetching angle:', error));
+                .catch(error => console.error('Error fetching position:', error));
+
+            fetch('/countdown')
+                .then(response => response.text())
+                .then(data => 
+                {
+                    let time = parseInt(data, 10);
+                    let countdownElement = document.getElementById("countdown");
+                    if(time > 0)
+                    {
+                        countdownElement.innerText = `Move in ${time} seconds`;
+                        countdownElement.style.display = "block";  // Make it visible
+                    }
+                    else
+                    {
+                        countdownElement.style.display = "none"; // Hide when done
+                    }
+                })
+                .catch(error => console.error('Error fetching countdown:', error));
+
+            fetch('/automan')
+                .then(response => response.text())
+                .then(data => 
+                {
+                    if(data == "0")
+                    {
+                        document.getElementById('auto').textContent = 'Manual';
+                        document.getElementById('automan').textContent = 'Manual';
+                    }
+                    else
+                    {
+                        document.getElementById('auto').textContent = 'Auto';
+                        document.getElementById('automan').textContent = 'Auto';
+                    }
+                })
+                .catch(error => console.error('Error fetching automan:', error));
 
             fetch('/leds')
                 .then(response => response.text())
@@ -542,25 +596,26 @@
             led16.classList.add("bright-green");
         }
         
-                            console.log(leds);
                 })
-                .catch(error => console.error('Error fetching angle:', error));
+                .catch(error => console.error('Error fetching leds:', error));
 
             fetch('/status')
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('status').textContent = data;
-                    console.log(data);
                 })
                 .catch(error => console.error('Error fetching status:', error));
-        }, 1000);
+        }, 500);
         
-        function updateValvePosition(x, y) {
+        function updateValveTransform(position) {
             const valve = document.getElementById("valve");
-            valve.setAttribute("x", x);
-            valve.setAttribute("y", y);
-        }
+            const cx = 100; // Rotation center X (adjust as needed)
+            const cy = 50; // Rotation center Y (adjust as needed)
+            let angle = 82.0 * position / 100.0 - 45.0;
 
+            valve.setAttribute("transform", `rotate(${angle}, ${cx}, ${cy})`);
+        }
+        
         function sendRequest(action) {
             fetch('/action', {
                 method: 'POST',

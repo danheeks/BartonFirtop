@@ -41,6 +41,11 @@
 #define STATUS_OK 0
 #define STATUS_MODBUS_ERROR 1
 
+#define SEQ_WAIT_BEFORE_MOVE_A 0
+#define SEQ_WAIT_BEFORE_MOVE_B 1
+#define SEQ_STATE_MOVE_TO_A 2
+#define SEQ_STATE_MOVE_TO_B 3
+
 // Set your WiFi credentials
 const char* ssid = "BartonFirtop-Control";
 const char* password = "123456789";
@@ -49,6 +54,8 @@ uint8_t status = STATUS_OK;
 uint8_t modbus_error = 0;
 unsigned long oldTime;
 uint16_t led_value = 0;
+bool automan = false;
+uint8_t countdown = 0;
 
 // Create an instance of the web server
 #ifdef USE_WIFI
@@ -103,6 +110,11 @@ void handleOpenA() {
 
 void handleAuto() {
     Serial.println("Auto pressed");
+    automan = !automan;
+    if(automan)
+    {
+      countdown = 20;
+    }
     // Add your logic here
 }
 
@@ -128,6 +140,14 @@ void handleBatteryVoltage() {
 
 void handlePosition() {
     server.send(200, "text/plain", String(position));
+}
+
+void handleCountdown() {
+    server.send(200, "text/plain", String(countdown));
+}
+
+void handleAutoMan() {
+    server.send(200, "text/plain", String(automan));
 }
 
 void handleLeds() {
@@ -270,6 +290,9 @@ void handlePostAction() {
     if (action == "openA") {
         Serial.println("Opening Chamber A...");
         handleOpenA();
+    } else if (action == "auto") {
+        Serial.println("Auto Pressed...");
+        handleAuto();
     } else if (action == "openB") {
         Serial.println("Opening Chamber B...");
         handleOpenB();
@@ -346,6 +369,8 @@ void setup() {
      server.on("/action", HTTP_POST, handlePostAction);
    server.on("/battery-voltage", HTTP_GET, handleBatteryVoltage);
     server.on("/position", HTTP_GET, handlePosition);
+    server.on("/countdown", HTTP_GET, handleCountdown);
+    server.on("/automan", HTTP_GET, handleAutoMan);
     server.on("/leds", HTTP_GET, handleLeds);
     server.on("/status", HTTP_GET, handleStatus);
     server.onNotFound(handleFileRequest);  // Serve static files from SPIFFS
@@ -423,9 +448,10 @@ void loop() {
   server.handleClient();  // Handle incoming requests
 
   unsigned long newTime = millis();
-  if(newTime > oldTime + 2000)
+  if(newTime > oldTime + 1000)
   {
     oldTime = newTime;
+
     position = getInputRegister(1);
     if(modbus_error == 0)
     {
@@ -435,6 +461,9 @@ void loop() {
     {
       status = STATUS_MODBUS_ERROR;
     }
+
+    if(countdown > 0)
+      countdown--;
   }
 
 #ifdef USE_WATCHDOG
