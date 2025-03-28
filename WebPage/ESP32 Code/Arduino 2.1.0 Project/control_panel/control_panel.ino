@@ -441,11 +441,6 @@ void setup() {
   pinMode(AB_PIN, INPUT_PULLUP);
   pinMode(35, INPUT_PULLUP);
 
-  while(1)
-  {
-
-  }
-
 #ifdef USE_MODBUS  
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
