@@ -244,6 +244,52 @@
         .footer img {
             height: 100px;
         }
+        
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #ccc;
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.slider.round {
+  border-radius: 24px;
+}        
     </style>
 </head>
 <body>
@@ -279,14 +325,11 @@
 
             <div class="status">
                 <div class="status-column">
-                    <div class="status-item"><span id = "led1" class="green"></span> Chamber 'A' On-Line</div>
-                    <div class="status-item"><span id = "led2" class="red"></span> Chamber 'A' Off-Line</div>
-                    <div class="status-item"><span id = "led3" class="yellow"></span> Chamber 'A' Standby</div>
-                    <div class="status-item"><span id = "led4" class="green"></span> Diff Press OK 'A'</div>
-                    <div class="status-item"><span id = "led5" class="red"></span> Diff Press High 'A'</div>
-                    <div class="status-item"><span id = "led6" class="yellow"></span> Equalization Valve</div>
-                    <div class="status-item"><span id = "led7" class="yellow"></span> Maintenance Required</div>
-                    <div class="status-item"><span id = "led8" class="yellow"></span> Solar Power</div>
+                    <div class="status-item"><span id = "led1" class="green"></span>Chamber 'A' On-Line</div>
+                    <div class="status-item"><span id = "led2" class="yellow"></span>Chamber 'A' Standby</div>
+                    <div class="status-item"><span id = "led3" class="green"></span>Diff Press OK 'A'</div>
+                    <div class="status-item"><span id = "led4" class="red"></span>Diff Press High 'A'</div>
+                    <div class="status-item"><span id = "led5" class="yellow"></span>Basket Cleaning Required 'A'</div>
                 </div>
 
                 <!-- Countdown Timer -->
@@ -296,15 +339,53 @@
 
                 <div class="status-column">
                     <div class="status-item"><span id = "led9" class="green"></span> Chamber 'B' On-Line</div>
-                    <div class="status-item"><span id = "led10" class="red"></span> Chamber 'B' Off-Line</div>
-                    <div class="status-item"><span id = "led11" class="yellow"></span> Chamber 'B' Standby</div>
-                    <div class="status-item"><span id = "led12" class="green"></span> Diff Press OK 'B'</div>
-                    <div class="status-item"><span id = "led13" class="red"></span> Diff Press High 'B'</div>
-                    <div class="status-item"><span id = "led14" class="yellow"></span> Changeover Active</div>
-                    <div class="status-item"><span id = "led15" class="red"></span> System Fault</div>
-                    <div class="status-item"><span id = "led16" class="green"></span> External Power</div>
+                    <div class="status-item"><span id = "led10" class="yellow"></span> Chamber 'B' Standby</div>
+                    <div class="status-item"><span id = "led11" class="green"></span> Diff Press OK 'B'</div>
+                    <div class="status-item"><span id = "led12" class="red"></span> Diff Press High 'B'</div>
+                    <div class="status-item"><span id = "led13" class="yellow"></span>Basket Cleaning Required 'B'</div>
                 </div>
             </div>
+
+            <!-- New Maintenance Modes Section -->
+            <div style="text-align: center; margin: 5px auto;">
+                <h3>Active Maintenance Modes</h3>
+                    <div style="display: flex; justify-content: center;">
+                        <!-- LED column -->
+                        <div style="display: flex; flex-direction: column; gap: 0px; align-items: left;">
+                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                                <div class="status-item"><span id="led6" class="yellow"></span></div>
+                                <div>Equalisation Valve/Prime</div>
+                            </div>
+                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                                <div class="status-item"><span id="led14" class="yellow"></span></div>
+                                <div>Changeover Active</div>
+                            </div>
+                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                                <div class="status-item"><span id="led15" class="red"></span></div>
+                                <div>System Fault</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            <!-- New Power Source Section -->
+            <div style="text-align: center; margin: 5px auto;">
+                <h3>Power Source</h3>
+                    <div style="display: flex; justify-content: center; gap: 40px; align-items: center;">
+                        <!-- External -->
+                        <div class="status-item" style="justify-content: center;">
+                            <img src="socket.svg" alt="Socket" style="height: 48px; margin-right: 5px;">
+                            <span id="led17" class="green" style="margin-right: 10px;"></span>External
+                        </div>
+
+                        <!-- Solar -->
+                        <div class="status-item reverse" style="justify-content: center;">
+                            Solar
+                            <span id="led18" class="green" style="margin-left: 10px;"></span>
+                            <img src="sun.svg" alt="Sun" style="height: 48px; margin-left: 5px;">
+                        </div>
+                    </div>
+                </div>
 
             <button class="stop" onclick="sendRequest('stop')">STOP</button>
             <div class="footer">
@@ -323,24 +404,43 @@
             <div class="setting-item"><strong>Auto/Manual:</strong> <span id="automan">Not Set</span></div>
 
             <div class="setting-item">
-                <strong>Wait Time 1 (secs):</strong> 
-                <input type="number" id="waitTime1" value="30" min="1" max="300" onchange="updateWaitTime1()">
+                <strong>Standby Wait (secs):</strong> 
+                <input type="number" id="waitTime1" value="15" min="1" max="300" onchange="updateWaitTime1()">
             </div>
 
             <div class="setting-item">
-                <strong>Wait Time 2 (secs):</strong> 
+                <strong>DP High Wait (secs):</strong> 
                 <input type="number" id="waitTime2" value="15" min="1" max="300" onchange="updateWaitTime2()">
             </div>
 
             <div class="setting-item">
-                <strong>Wait Time 3 (secs):</strong> 
-                <input type="number" id="waitTime3" value="60" min="1" max="300" onchange="updateWaitTime3()">
+                <strong>Prime Wait (secs):</strong> 
+                <input type="number" id="waitTime3" value="10" min="1" max="300" onchange="updateWaitTime3()">
             </div>
 
             <div class="setting-item">
-                <strong>Wait Time 4 (secs):</strong> 
-                <input type="number" id="waitTime4" value="300" min="1" max="1000" onchange="updateWaitTime4()">
+                <strong>After Move Wait (secs):</strong> 
+                <input type="number" id="waitTime4" value="600" min="1" max="6000" onchange="updateWaitTime4()">
             </div>
+
+            <div class="setting-item">
+                <strong>Manual Mode Dwell (secs):</strong> 
+                <input type="number" id="waitTime5" value="5" min="1" max="300" onchange="updateWaitTime5()">
+            </div>
+            
+            <div class="setting-item">
+                <strong>Power Source:</strong> 
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span>External</span>
+                    <label class="switch">
+                        <input type="checkbox" id="powerSourceToggle" onchange="updatePowerSource()">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Solar</span>
+                </div>
+            </div>
+            </div>
+            
         </div>
     </div>
 
@@ -436,56 +536,56 @@
             led1.classList.add("bright-green");
         }
 
-        // LED 2 (Red)
+        // LED 2 (Yellow)
         led2 = document.getElementById('led2');
         if((data & 0x0002) == 0)
         {
-            led2.classList.remove("bright-red");
-            led2.classList.add("red");
+            led2.classList.remove("bright-yellow");
+            led2.classList.add("yellow");
         }
         else
         {
-            led2.classList.remove("red");
-            led2.classList.add("bright-red");
+            led2.classList.remove("yellow");
+            led2.classList.add("bright-yellow");
         }
 
-        // LED 3 (Yellow)
+        // LED 3 (Green)
         led3 = document.getElementById('led3');
         if((data & 0x0004) == 0)
         {
-            led3.classList.remove("bright-yellow");
-            led3.classList.add("yellow");
+            led3.classList.remove("bright-green");
+            led3.classList.add("green");
         }
         else
         {
-            led3.classList.remove("yellow");
-            led3.classList.add("bright-yellow");
+            led3.classList.remove("green");
+            led3.classList.add("bright-green");
         }
 
-        // LED 4 (Green)
+        // LED 4 (Red)
         led4 = document.getElementById('led4');
         if((data & 0x0008) == 0)
         {
-            led4.classList.remove("bright-green");
-            led4.classList.add("green");
+            led4.classList.remove("bright-red");
+            led4.classList.add("red");
         }
         else
         {
-            led4.classList.remove("green");
-            led4.classList.add("bright-green");
+            led4.classList.remove("red");
+            led4.classList.add("bright-red");
         }
 
-        // LED 5 (Red)
+        // LED 5 (Yellow)
         led5 = document.getElementById('led5');
         if((data & 0x0010) == 0)
         {
-            led5.classList.remove("bright-red");
-            led5.classList.add("red");
+            led5.classList.remove("bright-yellow");
+            led5.classList.add("yellow");
         }
         else
         {
-            led5.classList.remove("red");
-            led5.classList.add("bright-red");
+            led5.classList.remove("yellow");
+            led5.classList.add("bright-yellow");
         }
 
         // LED 6 (Yellow)
@@ -514,17 +614,17 @@
             led7.classList.add("bright-yellow");
         }
 
-        // LED 8 (Yellow)
+        // LED 8 (Green)
         led8 = document.getElementById('led8');
         if((data & 0x0080) == 0)
         {
-            led8.classList.remove("bright-yellow");
-            led8.classList.add("yellow");
+            led8.classList.remove("bright-green");
+            led8.classList.add("green");
         }
         else
         {
-            led8.classList.remove("yellow");
-            led8.classList.add("bright-yellow");
+            led8.classList.remove("green");
+            led8.classList.add("bright-green");
         }
 
         // LED 9 (Green)
@@ -540,56 +640,56 @@
             led9.classList.add("bright-green");
         }
 
-        // LED 10 (Red)
+        // LED 10 (Yellow)
         led10 = document.getElementById('led10');
         if((data & 0x0200) == 0)
         {
-            led10.classList.remove("bright-red");
-            led10.classList.add("red");
+            led10.classList.remove("bright-yellow");
+            led10.classList.add("yellow");
         }
         else
         {
-            led10.classList.remove("red");
-            led10.classList.add("bright-red");
+            led10.classList.remove("yellow");
+            led10.classList.add("bright-yellow");
         }
 
-        // LED 11 (Yellow)
+        // LED 11 (Green)
         led11 = document.getElementById('led11');
         if((data & 0x0400) == 0)
         {
-            led11.classList.remove("bright-yellow");
-            led11.classList.add("yellow");
+            led11.classList.remove("bright-green");
+            led11.classList.add("green");
         }
         else
         {
-            led11.classList.remove("yellow");
-            led11.classList.add("bright-yellow");
+            led11.classList.remove("green");
+            led11.classList.add("bright-green");
         }
 
-        // LED 12 (Green)
+        // LED 12 (Red)
         led12 = document.getElementById('led12');
         if((data & 0x0800) == 0)
         {
-            led12.classList.remove("bright-green");
-            led12.classList.add("green");
+            led12.classList.remove("bright-red");
+            led12.classList.add("red");
         }
         else
         {
-            led12.classList.remove("green");
-            led12.classList.add("bright-green");
+            led12.classList.remove("red");
+            led12.classList.add("bright-red");
         }
 
-        // LED 13 (Red)
+        // LED 13 (Yellow)
         led13 = document.getElementById('led13');
         if((data & 0x1000) == 0)
         {
-            led13.classList.remove("bright-red");
-            led13.classList.add("red");
+            led13.classList.remove("bright-yellow");
+            led13.classList.add("yellow");
         }
         else
         {
-            led13.classList.remove("red");
-            led13.classList.add("bright-red");
+            led13.classList.remove("yellow");
+            led13.classList.add("bright-yellow");
         }
 
         // LED 14 (Yellow)
@@ -649,25 +749,43 @@
                 .then(data => {
                     document.getElementById("waitTime1").value = data; // Set input field value
                 })
-                .catch(error => console.error("Error fetching wait time:", error));
+                .catch(error => console.error("Error fetching wait time1:", error));
+
             fetch("/getWaitTime2")  // Request wait time from ESP32
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById("waitTime2").value = data; // Set input field value
                 })
-                .catch(error => console.error("Error fetching wait time:", error));
+                .catch(error => console.error("Error fetching wait time2:", error));
+
             fetch("/getWaitTime3")  // Request wait time from ESP32
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById("waitTime3").value = data; // Set input field value
                 })
-                .catch(error => console.error("Error fetching wait time:", error));
+                .catch(error => console.error("Error fetching wait time3:", error));
+
             fetch("/getWaitTime4")  // Request wait time from ESP32
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById("waitTime4").value = data; // Set input field value
                 })
-                .catch(error => console.error("Error fetching wait time:", error));
+                .catch(error => console.error("Error fetching wait time4:", error));
+
+            fetch("/getWaitTime5")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime5").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time5:", error));
+
+            fetch("/getPowerSource")
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("powerSourceToggle").checked = data.trim() === "1";
+                })
+                .catch(error => console.error("Error fetching power source:", error));
+                    
         });
                 
         function updateWaitTime1() {
@@ -713,6 +831,17 @@
             }).then(response => response.text())
               .then(data => console.log(data));
         }
+                
+        function updateWaitTime5() {
+            let waitTime4 = document.getElementById("waitTime5").value;
+            
+            fetch("/setWaitTime5", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime5: parseInt(waitTime5) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
 
         function updateValveTransform(position) {
             const valve = document.getElementById("valve");
@@ -723,6 +852,18 @@
             valve.setAttribute("transform", `rotate(${angle}, ${cx}, ${cy})`);
         }
         
+        function updatePowerSource() {
+            const toggle = document.getElementById("powerSourceToggle");
+            const value = toggle.checked ? 1 : 0;
+
+            fetch("/setPowerSource", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ powerSource: value })
+            }).then(response => response.text())
+              .then(data => console.log("Power Source set to:", value == 1 ? "Solar" : "External"));
+        }
+             
         function sendRequest(action) {
             fetch('/action', {
                 method: 'POST',
