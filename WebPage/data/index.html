@@ -375,13 +375,13 @@ input:checked + .slider:before {
                         <!-- External -->
                         <div class="status-item" style="justify-content: center;">
                             <img src="socket.svg" alt="Socket" style="height: 48px; margin-right: 5px;">
-                            <span id="led17" class="green" style="margin-right: 10px;"></span>External
+                            <span id="led16" class="green" style="margin-right: 10px;"></span>External
                         </div>
 
                         <!-- Solar -->
                         <div class="status-item reverse" style="justify-content: center;">
                             Solar
-                            <span id="led18" class="green" style="margin-left: 10px;"></span>
+                            <span id="led8" class="green" style="margin-left: 10px;"></span>
                             <img src="sun.svg" alt="Sun" style="height: 48px; margin-left: 5px;">
                         </div>
                     </div>
@@ -420,6 +420,11 @@ input:checked + .slider:before {
 
             <div class="setting-item">
                 <strong>After Move Wait (secs):</strong> 
+                <input type="number" id="waitTime3b" value="5" min="1" max="300" onchange="updateWaitTime3b()">
+            </div>
+
+            <div class="setting-item">
+                <strong>Dwell Wait (secs):</strong> 
                 <input type="number" id="waitTime4" value="600" min="1" max="6000" onchange="updateWaitTime4()">
             </div>
 
@@ -602,17 +607,17 @@ input:checked + .slider:before {
         }
 
         // LED 7 (Yellow)
-        led7 = document.getElementById('led7');
-        if((data & 0x0040) == 0)
-        {
-            led7.classList.remove("bright-yellow");
-            led7.classList.add("yellow");
-        }
-        else
-        {
-            led7.classList.remove("yellow");
-            led7.classList.add("bright-yellow");
-        }
+        //led7 = document.getElementById('led7');
+        //if((data & 0x0040) == 0)
+        //{
+        //    led7.classList.remove("bright-yellow");
+        //    led7.classList.add("yellow");
+        //}
+        //else
+        //{
+        //    led7.classList.remove("yellow");
+        //    led7.classList.add("bright-yellow");
+        //}
 
         // LED 8 (Green)
         led8 = document.getElementById('led8');
@@ -765,6 +770,13 @@ input:checked + .slider:before {
                 })
                 .catch(error => console.error("Error fetching wait time3:", error));
 
+            fetch("/getWaitTime3b")  // Request wait time from ESP32
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById("waitTime3b").value = data; // Set input field value
+                })
+                .catch(error => console.error("Error fetching wait time3b:", error));
+
             fetch("/getWaitTime4")  // Request wait time from ESP32
                 .then(response => response.text())
                 .then(data => {
@@ -817,6 +829,17 @@ input:checked + .slider:before {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ waitTime3: parseInt(waitTime3) })
+            }).then(response => response.text())
+              .then(data => console.log(data));
+        }
+                
+        function updateWaitTime3b() {
+            let waitTime3b = document.getElementById("waitTime3b").value;
+            
+            fetch("/setWaitTime3b", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ waitTime3: parseInt(waitTime3b) })
             }).then(response => response.text())
               .then(data => console.log(data));
         }

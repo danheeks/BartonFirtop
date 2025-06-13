@@ -52,6 +52,9 @@ LED codes
 #define A_PIN 34
 #define B_PIN 35
 
+#define REMOTE_PIN 36 // VP
+#define MANUAL_PIN 39 // VP
+
 // connections RS485 module to Arduino
 // GND to GND
 // VCC to 5V
@@ -94,11 +97,12 @@ unsigned long oldTime;
 uint16_t led_value = 0;
 bool app_automan = false;
 uint8_t auto_seq = SEQ_NOT_SET;
-uint8_t countdown = 0;
-int waitTime1 = 15; // Standby wait
+int countdown = 0;
+int waitTime1 = 15; // Initial Standby wait
 int waitTime2 = 15; // High wait
 int waitTime3 = 10; // Prime wait
-int waitTime4 = 600; // after move wait
+int waitTime3b = 5; // After move wait
+int waitTime4 = 600; // Standby wait
 int waitTime5 = 5; // manual mode dwell
 uint8_t remote_auto_manual = 2; // 0 - remote(app), 1 - auto, 2 - manual
 uint8_t manual_mode = MAN_NOT_IN_MANUAL;
@@ -217,8 +221,21 @@ void handleSeq() {
   else
   {
     // manual
-    if(countdown > 0)
-      seqstr = "Waiting for " + String(countdown) + " seconds";
+    switch(manual_mode)
+    {
+      case MAN_NOT_IN_MANUAL:
+        seqstr = "Return Manual Mode to Vertical";
+        break;
+
+      case MAN_NEUTRAL:
+        seqstr = "Select A or B";
+        break;
+
+      default:
+        if(countdown > 0)
+          seqstr = "Waiting for " + String(countdown) + " seconds";
+        break;
+    }
   }
     server.send(200, "text/plain", seqstr);
 }
@@ -252,6 +269,10 @@ void handleGetWaitTime2() {
 
 void handleGetWaitTime3() {
     server.send(200, "text/plain", String(waitTime3));
+}
+
+void handleGetWaitTime3b() {
+    server.send(200, "text/plain", String(waitTime3b));
 }
 
 void handleGetWaitTime4() {
@@ -294,6 +315,17 @@ void handleSetWaitTime3() {
         deserializeJson(doc, server.arg("plain"));
         waitTime3 = doc["waitTime3"];
         server.send(200, "text/plain", "Wait3 time updated");
+    } else {
+        server.send(400, "text/plain", "Bad Request");
+    }
+}
+
+void handleSetWaitTime3b() {
+    if (server.hasArg("plain")) {
+        StaticJsonDocument<200> doc;
+        deserializeJson(doc, server.arg("plain"));
+        waitTime3b = doc["waitTime3b"];
+        server.send(200, "text/plain", "Wait3b time updated");
     } else {
         server.send(400, "text/plain", "Bad Request");
     }
@@ -501,8 +533,8 @@ void setup() {
   pinMode(LED16, OUTPUT);
   pinMode(A_PIN, INPUT);
   pinMode(B_PIN, INPUT);
-  pinMode(36, INPUT);  // VP as digital input, pullup not available so add 10k resistor on board
-  pinMode(39, INPUT);  // VN as digital input, pullup not available so add 10k resistor on board
+  pinMode(REMOTE_PIN, INPUT);  // VP as digital input, pullup not available so add 10k resistor on board
+  pinMode(MANUAL_PIN, INPUT);  // VN as digital input, pullup not available so add 10k resistor on board
   
     rs485.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
 
@@ -536,6 +568,8 @@ void setup() {
     server.on("/setWaitTime2", HTTP_POST, handleSetWaitTime2);
     server.on("/getWaitTime3", HTTP_GET, handleGetWaitTime3);
     server.on("/setWaitTime3", HTTP_POST, handleSetWaitTime3);
+    server.on("/getWaitTime3b", HTTP_GET, handleGetWaitTime3b);
+    server.on("/setWaitTime3b", HTTP_POST, handleSetWaitTime3b);
     server.on("/getWaitTime4", HTTP_GET, handleGetWaitTime4);
     server.on("/setWaitTime4", HTTP_POST, handleSetWaitTime4);
     server.on("/getWaitTime5", HTTP_GET, handleGetWaitTime5);
@@ -613,29 +647,6 @@ bool every_other = false;
 void loop() {
   server.handleClient();  // Handle incoming requests
 
-  // set remote/auto/manual from 3 way key switch
-  if(!digitalRead(39) /* VN */)remote_auto_manual = 0; // remote ( app )
-  else if(!digitalRead(36) /* VP */)remote_auto_manual = 2; // manual
-  else remote_auto_manual = 1; // auto
-
-
-
-
-
-
-
-
-  /* DODGY TEST */
-  remote_auto_manual = 0;
-
-
-
-
-
-
-
-
-
   unsigned long newTime = millis();
   if(newTime > oldTime + 1000)
   {
@@ -653,7 +664,6 @@ void loop() {
     }
 
     uint16_t new_led_state = 0x0000;
-    new_led_state |= 0x8000; // eXTERNAL pOWWER
 
     if(modbus_error != 0)
     {
@@ -681,9 +691,18 @@ void loop() {
     else
       new_led_state |= 0x8000;// External Power
 
+  // set remote/auto/manual from 3 way key switch
+  if(!digitalRead(REMOTE_PIN) /* VN */)remote_auto_manual = 0; // remote ( app )
+  else if(!digitalRead(MANUAL_PIN) /* VP */)remote_auto_manual = 2; // manual
+  else remote_auto_manual = 1; // auto
+
+  Serial.print("remote_auto_manual = ");
+  Serial.println(remote_auto_manual);
+
     // process auto sequence
     if((remote_auto_manual == 1) || ((remote_auto_manual == 0) && app_automan)) 
     {
+      Serial.print("Auto ");
       switch(auto_seq)
       {
         case SEQ_NOT_SET:
@@ -734,13 +753,13 @@ void loop() {
             break;
         case SEQ_MOVE_TO_B:
             // opening
-            new_led_state |= 0x0200; // Chamber 'B' Standby
+            if(every_other)new_led_state |= 0x0200; // Chamber 'B' Standby flashing
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
-            if(!every_other)new_led_state &= 0xfffe; // Chamber 'A' online flashing
+            if(every_other)new_led_state |= 0x0001; // Chamber 'A' online flashing
             if(position == 100)
             {
                 auto_seq = SEQ_WAIT_AFTER_MOVE_B;
-                countdown = waitTime4;
+                countdown = waitTime3b;
             }            
             break;
         case SEQ_WAIT_AFTER_MOVE_B:
@@ -751,7 +770,7 @@ void loop() {
             if(countdown == 0)
             {
               auto_seq = SEQ_A_STANDBY;
-              countdown = waitTime1;
+              countdown = waitTime4;
             }
             break;
         case SEQ_A_STANDBY:
@@ -793,13 +812,14 @@ void loop() {
             break;
         case SEQ_MOVE_TO_A:
             // opening
-            new_led_state |= 0x0002; // Chamber 'A' Standby
+            if(every_other)new_led_state |= 0x0002; // Chamber 'A' Standby flashing
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
-            if(!every_other)new_led_state &= 0xfeff; // Chamber 'B' online flashing
+            if(every_other)new_led_state |= 0x0100; // Chamber 'B' online flashing
+
             if(position == 0)
             {
                 auto_seq = SEQ_WAIT_AFTER_MOVE_A;
-                countdown = waitTime4;
+                countdown = waitTime3b;
             }            
             break;
         case SEQ_WAIT_AFTER_MOVE_A:
@@ -810,17 +830,23 @@ void loop() {
             if(countdown == 0)
             {
               auto_seq = SEQ_B_STANDBY;
-              countdown = waitTime1;
+              countdown = waitTime4;
             }
             break;
       }
       manual_mode = MAN_NOT_IN_MANUAL; // reset manual sequence when in auto mode
+      //countdown = 0; // don't show waiting for 5 seconds
     }
     else
     {
+      Serial.print("Manual ");
+
       // check state of AB switch
       A_switch = !digitalRead(A_PIN);
       B_switch = !digitalRead(B_PIN);
+
+      if(A_switch)Serial.print("A");
+      if(B_switch)Serial.print("B");
 
       uint8_t use_A = (remote_auto_manual == 0) ? app_A_pressed : A_switch;
       uint8_t use_B = (remote_auto_manual == 0) ? app_B_pressed : B_switch;
@@ -857,6 +883,7 @@ void loop() {
             if(countdown == 0) // dwell time waited
             {
               manual_mode = MAN_B_MOVE;
+              delay(100);
               openActuator();
             }
             else
@@ -877,7 +904,7 @@ void loop() {
           {
             // Changeover in progress
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
-            if(!every_other)new_led_state &= 0xfffe; // Chamber 'A' On-Line flashing
+            if(every_other)new_led_state |= 0x0001; // Chamber 'A' On-Line flashing
             if(every_other)new_led_state |= 0x0200; // B Standby flashing
             if(position == 100) // B position
             {
@@ -925,6 +952,7 @@ void loop() {
             if(countdown == 0) // dwell time waited
             {
               manual_mode = MAN_A_MOVE;
+              delay(100);
               closeActuator();
             }
             else
@@ -945,7 +973,7 @@ void loop() {
           {
             // Changeover in progress
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
-            if(!every_other)new_led_state &= 0xfeff; // Chamber 'B' On-Line flashing
+            if(every_other)new_led_state |= 0x0100; // Chamber 'B' On-Line flashing
             if(every_other)new_led_state |= 0x0002; // A Standby flashing
             if(position == 0) // A position
             {
