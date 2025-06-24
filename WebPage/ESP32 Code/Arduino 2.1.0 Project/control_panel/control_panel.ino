@@ -63,6 +63,7 @@ LED codes
 
 #define STATUS_OK 0
 #define STATUS_MODBUS_ERROR 1
+#define STATUS_FAILED_TO_COMPLETE 2
 
 #define SEQ_NOT_SET 0
 #define SEQ_B_STANDBY 1
@@ -87,6 +88,10 @@ LED codes
 #define MAN_B_REACHED 8
 #define MAN_B_COMPLETE 9
 
+#define AB_SWITCH_NEUTRAL 0
+#define AB_SWITCH_A 1
+#define AB_SWITCH_B 2
+
 // Set your WiFi credentials
 const char* ssid = "Paul's Phone";
 const char* password = "Mani1234";
@@ -106,10 +111,10 @@ int waitTime4 = 600; // Standby wait
 int waitTime5 = 5; // manual mode dwell
 uint8_t remote_auto_manual = 2; // 0 - remote(app), 1 - auto, 2 - manual
 uint8_t manual_mode = MAN_NOT_IN_MANUAL;
-uint8_t app_A_pressed = 0;
-uint8_t app_B_pressed = 0;
-uint8_t A_switch = 0;
-uint8_t B_switch = 0;
+uint8_t app_AB_switch_mode = AB_SWITCH_NEUTRAL;
+uint8_t AB_switch_mode = AB_SWITCH_NEUTRAL;
+uint8_t prev_app_AB_switch_mode = AB_SWITCH_NEUTRAL;
+uint8_t prev_AB_switch_mode = AB_SWITCH_NEUTRAL;
 uint8_t powerSource = 0; // 1 for solar, 0 for external
 
 // Create an instance of the web server
@@ -148,33 +153,33 @@ void stopActuator()
 // Functions triggered by button presses
 void handleOpenA() {
     Serial.println("Open A pressed");
-    if(remote_auto_manual == 0)
-    {
-      app_A_pressed = 1;
-      app_B_pressed = 0;
-    }
+    app_AB_switch_mode = AB_SWITCH_A;
+}
+
+void handleNeutral()
+{
+  app_AB_switch_mode = AB_SWITCH_NEUTRAL;
 }
 
 void handleAuto() {
     Serial.println("Auto pressed");
-    if(remote_auto_manual == 0)
-    {
-      app_automan = !app_automan;
-    }
-    // Add your logic here
+    app_automan = true;
+}
+
+void handleManual() {
+    Serial.println("Manual pressed");
+    app_automan = false;
 }
 
 void handleOpenB() {
-    Serial.println("Open B pressed");
-    app_A_pressed = 0;
-    app_B_pressed = 1;
+  Serial.println("Open B pressed");
+  app_AB_switch_mode = AB_SWITCH_B;
 }
 
 void handleStop() {
     Serial.println("STOP pressed");
     stopActuator();
-    app_A_pressed = 0;
-    app_B_pressed = 0;
+    app_AB_switch_mode = AB_SWITCH_NEUTRAL;
     app_automan = false;
 }
 
@@ -364,23 +369,6 @@ void handleSetPowerSource() {
     }
 }
 
-void printInputRegister(uint16_t u16ReadAddress, char* str)
-{
-  uint8_t result = node.readInputRegisters(u16ReadAddress, 1);
-        
-  // do something with data if read is successful
-  if (result == node.ku8MBSuccess)
-  {
-    Serial.print(str);
-    Serial.println((uint16_t)(node.getResponseBuffer(0)));
-  }
-  else
-  {
-    Serial.print("Error code: ");
-    Serial.println(result);
-  }
-}
-
 uint16_t getInputRegister(uint16_t u16ReadAddress)
 {
   modbus_error = 0;
@@ -400,20 +388,22 @@ uint16_t getInputRegister(uint16_t u16ReadAddress)
   }
 }
 
-void printDiscreteInput(uint16_t u16ReadAddress, char* str)
+bool getDiscreteInput(uint16_t u16ReadAddress)
 {
+    modbus_error = 0;
     uint8_t result = node.readDiscreteInputs(u16ReadAddress, 1);
     
     // do something with data if read is successful
     if (result == node.ku8MBSuccess)
     {
-        Serial.print(str);
-        Serial.println((int)(node.getResponseBuffer(0) & 0x01) != 0);
+        return(node.getResponseBuffer(0) & 0x01) != 0;
   }
   else
   {
     Serial.print("Error code: ");
     Serial.println(result);
+    modbus_error = result;
+    return false;
   }
 }
 
@@ -483,9 +473,18 @@ void handlePostAction() {
     if (action == "openA") {
         Serial.println("Opening Chamber A...");
         handleOpenA();
-    } else if (action == "auto") {
+    }
+    else if (action == "neutral") {
+        Serial.println("Neutral...");
+        handleNeutral();
+    }
+    else if (action == "auto") {
         Serial.println("Auto Pressed...");
         handleAuto();
+    }
+    else if (action == "manual") {
+        Serial.println("Manual Pressed...");
+        handleManual();
     } else if (action == "openB") {
         Serial.println("Opening Chamber B...");
         handleOpenB();
@@ -504,6 +503,13 @@ void handlePostAction() {
 // Handle 404 (Not Found)
 void handleNotFound() {
     server.send(404, "text/plain", "404: Not Found");
+}
+    
+uint8_t GetAbSwitchState()
+{
+    if(!digitalRead(A_PIN))return AB_SWITCH_A;
+    if(!digitalRead(B_PIN))return AB_SWITCH_B;
+    return AB_SWITCH_NEUTRAL;
 }
 
 void setup() {
@@ -589,35 +595,10 @@ delay(1000);
     digitalWrite(LED12, LOW);
     pinMode(LED6, OUTPUT);
     digitalWrite(LED6, LOW);
+
+    prev_AB_switch_mode = GetAbSwitchState();
     
     Serial.println("Server started");
-}
-
-bool isDiscreteInputTrue(uint16_t u16ReadAddress)
-{
-    uint8_t result = node.readDiscreteInputs(u16ReadAddress, 1);
-    
-    // do something with data if read is successful
-    if (result == node.ku8MBSuccess)
-    {
-        return (int)(node.getResponseBuffer(0) & 0x01) != 0; // Only LSB is valid
-    }
-  else
-  {
-    Serial.print("Error code: ");
-    Serial.println(result);
-  }
-  return false;
-}
-
-bool isOpen()
-{
-  return isDiscreteInputTrue(0);
-}
-
-bool isClosed()
-{
-  return isDiscreteInputTrue(1);
 }
 
 void SetLEDs(uint16_t value)
@@ -657,6 +638,12 @@ void loop() {
     if(modbus_error == 0)
     {
       status = STATUS_OK;
+      delay(10);
+      bool failed_to_complete = getDiscreteInput(3);
+      if(modbus_error)
+        status = STATUS_MODBUS_ERROR;
+      else if(failed_to_complete)
+        status = STATUS_FAILED_TO_COMPLETE;
     }  
     else
     {
@@ -665,25 +652,29 @@ void loop() {
 
     uint16_t new_led_state = 0x0000;
 
-    if(modbus_error != 0)
+    switch(status)
     {
-      new_led_state |= 0x4000; // system fault
+      case STATUS_FAILED_TO_COMPLETE:
+        if(every_other)new_led_state |= 0x4000; // system fault
+        break;
+
+      case STATUS_MODBUS_ERROR:
+        new_led_state |= 0x4000; // system fault
+        break;      
+    }
+
+    // a, b, online
+    if(position == 0)
+    {
+      new_led_state |= 0x0001; // A On line
+    }
+    else if(position == 100)
+    {
+      new_led_state |= 0x0100; // B On line
     }
     else
     {
-      // a, b, online
-      if(position == 0)
-      {
-        new_led_state |= 0x0001; // A On line
-      }
-      else if(position == 100)
-      {
-        new_led_state |= 0x0100; // B On line
-      }
-      else
-      {
-        if(every_other)new_led_state |= 0x2000; // Changeover Active Flashing
-      }
+      if(every_other)new_led_state |= 0x2000; // Changeover Active Flashing
     }
 
     if(powerSource)
@@ -698,6 +689,9 @@ void loop() {
 
   Serial.print("remote_auto_manual = ");
   Serial.println(remote_auto_manual);
+
+    // check state of AB switch
+    AB_switch_mode = GetAbSwitchState();
 
     // process auto sequence
     if((remote_auto_manual == 1) || ((remote_auto_manual == 0) && app_automan)) 
@@ -841,33 +835,26 @@ void loop() {
     {
       Serial.print("Manual ");
 
-      // check state of AB switch
-      A_switch = !digitalRead(A_PIN);
-      B_switch = !digitalRead(B_PIN);
-
-      if(A_switch)Serial.print("A");
-      if(B_switch)Serial.print("B");
-
-      uint8_t use_A = (remote_auto_manual == 0) ? app_A_pressed : A_switch;
-      uint8_t use_B = (remote_auto_manual == 0) ? app_B_pressed : B_switch;
+      uint8_t AB_mode_to_use = (remote_auto_manual == 0) ? app_AB_switch_mode : AB_switch_mode;
+      uint8_t prev_AB_mode_to_use = (remote_auto_manual == 0) ? prev_app_AB_switch_mode : prev_AB_switch_mode;
 
       // process manual sequence
       switch(manual_mode)
       {
         case MAN_NOT_IN_MANUAL:
-          if(!use_A && !use_B)
+          if(AB_mode_to_use != prev_AB_mode_to_use)
             manual_mode = MAN_NEUTRAL;
           break;
 
         case MAN_NEUTRAL:
-          if(use_A)
+          if(AB_mode_to_use == AB_SWITCH_A)
           {
             if(position == 0) // if already at A, jump to next sequence
               manual_mode = MAN_A_REACHED;
             else
               manual_mode = MAN_A_PRIME;
           }
-          else if(use_B)
+          else if(AB_mode_to_use == AB_SWITCH_B)
           {
             if(position == 100) // if already at B, jump to next sequence
               manual_mode = MAN_B_REACHED;
@@ -878,7 +865,7 @@ void loop() {
           break;
 
         case MAN_B_PRIME:
-          if(use_B)
+          if(AB_mode_to_use == AB_SWITCH_B)
           {
             if(countdown == 0) // dwell time waited
             {
@@ -900,7 +887,7 @@ void loop() {
           break;
 
         case MAN_B_MOVE:
-          if(use_B)
+          if(AB_mode_to_use == AB_SWITCH_B)
           {
             // Changeover in progress
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
@@ -917,7 +904,7 @@ void loop() {
           break;
 
         case MAN_B_REACHED:
-          if(use_B)
+          if(AB_mode_to_use == AB_SWITCH_B)
           {
             if(countdown == 0) // dwell time waited
             {
@@ -936,7 +923,7 @@ void loop() {
           break;
 
         case MAN_B_COMPLETE:
-          if(use_B)
+          if(AB_mode_to_use == AB_SWITCH_B)
           {
             // Maintenance complete on Chamber A
             new_led_state |= 0x0400; // Differential Pressure OK 'B'
@@ -947,7 +934,7 @@ void loop() {
           break;
 
         case MAN_A_PRIME:
-          if(use_A)
+          if(AB_mode_to_use == AB_SWITCH_A)
           {
             if(countdown == 0) // dwell time waited
             {
@@ -969,7 +956,7 @@ void loop() {
           break;
 
         case MAN_A_MOVE:
-          if(use_A)
+          if(AB_mode_to_use == AB_SWITCH_A)
           {
             // Changeover in progress
             if(every_other)new_led_state |= 0x2000; // Changeover Active flashing
@@ -986,7 +973,7 @@ void loop() {
           break;
 
         case MAN_A_REACHED:
-          if(use_A)
+          if(AB_mode_to_use == AB_SWITCH_A)
           {
             if(countdown == 0) // dwell time waited
             {
@@ -1005,7 +992,7 @@ void loop() {
           break;
 
         case MAN_A_COMPLETE:
-          if(use_A)
+          if(AB_mode_to_use == AB_SWITCH_A)
           {
             // Maintenance complete on Chamber B
             new_led_state |= 0x0004; // Differential Pressure OK 'A'
@@ -1018,6 +1005,9 @@ void loop() {
 
         auto_seq = SEQ_NOT_SET; // reset auto sequence when in manual mode
     }
+
+    prev_AB_switch_mode = AB_switch_mode;
+    prev_app_AB_switch_mode = app_AB_switch_mode;
 
     SetLEDs(new_led_state);
   }

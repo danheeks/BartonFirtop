@@ -289,7 +289,35 @@ input:checked + .slider:before {
 
 .slider.round {
   border-radius: 24px;
-}        
+}     
+   
+#chamberSlider {
+    appearance: none;
+    height: 10px;
+    background: #ccc;
+    border-radius: 5px;
+    outline: none;
+}
+
+#chamberSlider::-webkit-slider-thumb {
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #005596;
+    cursor: pointer;
+    border: 2px solid #fff;
+    margin-top: -7px;
+}
+
+#chamberSlider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #005596;
+    cursor: pointer;
+    border: 2px solid #fff;
+}   
     </style>
 </head>
 <body>
@@ -317,10 +345,25 @@ input:checked + .slider:before {
                 </svg>
             </div>
             
-            <div class="controls">
-                <button class="open-a" onclick="sendRequest('openA')">Chamber 'A'</button>
-                <button id = "auto" class="auto" onclick="sendRequest('auto')">Auto</button>
-                <button class="open-b" onclick="sendRequest('openB')">Chamber 'B'</button>
+            <div class="controls" style="flex-direction: column; align-items: center;">
+                <div style="width: 300px; text-align: center;">
+                    <input type="range" id="chamberSlider" min="0" max="2" step="1" value="1" style="width: 100%;">
+                    <div style="display: flex; justify-content: space-between; font-size: 16px; margin-top: 5px;">
+                        <span>A</span>
+                        <span>:</span>
+                        <span>B</span>
+                    </div>
+                </div>
+                <!-- Auto/Manual Toggle Switch -->
+                <div style="margin-top: 0px; display: flex; align-items: center; gap: 10px;">
+                    <span>Auto</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoModeToggle">
+                        <span class="slider round"></span>
+                    </label>
+                    <span>Manual</span>
+                </div>
+
             </div>
 
             <div class="status">
@@ -509,15 +552,13 @@ input:checked + .slider:before {
                 .then(response => response.text())
                 .then(data => 
                 {
-                    if(data == "0")
-                    {
-                        document.getElementById('auto').textContent = 'Manual';
-                        document.getElementById('automan').textContent = 'Manual';
-                    }
-                    else
-                    {
-                        document.getElementById('auto').textContent = 'Auto';
-                        document.getElementById('automan').textContent = 'Auto';
+                    const autoToggle = document.getElementById("autoModeToggle");
+                    if (data === "0") {
+                        autoToggle.checked = true;  // Manual
+                        document.getElementById("automan").textContent = "Manual";
+                    } else {
+                        autoToggle.checked = false; // Auto
+                        document.getElementById("automan").textContent = "Auto";
                     }
                 })
                 .catch(error => console.error('Error fetching automan:', error));
@@ -797,7 +838,31 @@ input:checked + .slider:before {
                     document.getElementById("powerSourceToggle").checked = data.trim() === "1";
                 })
                 .catch(error => console.error("Error fetching power source:", error));
-                    
+                
+            const slider = document.getElementById("chamberSlider");
+
+            slider.addEventListener("input", function () {
+                switch (slider.value) {
+                    case "0":
+                        sendRequest("openA");
+                        break;
+                    case "1":
+                        sendRequest("neutral");
+                        break;
+                    case "2":
+                        sendRequest("openB");
+                        break;
+                }
+            });                
+                   
+            document.getElementById("autoModeToggle").addEventListener("change", function () {
+                if (this.checked) {
+                    sendRequest("manual");
+                } else {
+                    sendRequest("auto");
+                }
+            });
+
         });
                 
         function updateWaitTime1() {
