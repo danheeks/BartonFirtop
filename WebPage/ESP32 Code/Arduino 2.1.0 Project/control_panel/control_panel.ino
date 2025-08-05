@@ -369,6 +369,16 @@ void handleSetPowerSource() {
     }
 }
 
+void handleRotateCWStart() {
+    // tell actuator to open without limits
+    node.writeSingleCoil(4, 1);
+}
+
+void handleRotateCCWStart() {
+    // tell actuator to close without limits
+    node.writeSingleCoil(5, 1);
+}
+
 uint16_t getInputRegister(uint16_t u16ReadAddress)
 {
   modbus_error = 0;
@@ -491,7 +501,14 @@ void handlePostAction() {
     } else if (action == "stop") {
         Serial.println("Stopping system...");
         handleStop();
-    } else {
+    } else if (action == "cw") {
+        Serial.println("cw...");
+        handleRotateCWStart();
+    } else if (action == "ccw") {
+        Serial.println("ccw...");
+        handleRotateCCWStart();
+    }
+      else {
         Serial.println("Unknown action received");
         server.send(400, "text/plain", "Bad Request: Unknown action");
         return;
@@ -582,6 +599,7 @@ void setup() {
     server.on("/setWaitTime5", HTTP_POST, handleSetWaitTime5);
     server.on("/getPowerSource", HTTP_GET, handleGetPowerSource);
     server.on("/setPowerSource", HTTP_POST, handleSetPowerSource);
+
     server.onNotFound(handleFileRequest);  // Serve static files from SPIFFS
 
     // Start the server
@@ -687,16 +705,12 @@ void loop() {
   else if(!digitalRead(MANUAL_PIN) /* VP */)remote_auto_manual = 2; // manual
   else remote_auto_manual = 1; // auto
 
-  Serial.print("remote_auto_manual = ");
-  Serial.println(remote_auto_manual);
-
     // check state of AB switch
     AB_switch_mode = GetAbSwitchState();
 
     // process auto sequence
     if((remote_auto_manual == 1) || ((remote_auto_manual == 0) && app_automan)) 
     {
-      Serial.print("Auto ");
       switch(auto_seq)
       {
         case SEQ_NOT_SET:
@@ -833,8 +847,6 @@ void loop() {
     }
     else
     {
-      Serial.print("Manual ");
-
       uint8_t AB_mode_to_use = (remote_auto_manual == 0) ? app_AB_switch_mode : AB_switch_mode;
       uint8_t prev_AB_mode_to_use = (remote_auto_manual == 0) ? prev_app_AB_switch_mode : prev_AB_switch_mode;
 

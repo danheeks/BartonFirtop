@@ -392,43 +392,43 @@ input:checked + .slider:before {
             <!-- New Maintenance Modes Section -->
             <div style="text-align: center; margin: 5px auto;">
                 <h3>Active Maintenance Modes</h3>
-                    <div style="display: flex; justify-content: center;">
-                        <!-- LED column -->
-                        <div style="display: flex; flex-direction: column; gap: 0px; align-items: left;">
-                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
-                                <div class="status-item"><span id="led6" class="yellow"></span></div>
-                                <div>Equalisation Valve/Prime</div>
-                            </div>
-                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
-                                <div class="status-item"><span id="led14" class="yellow"></span></div>
-                                <div>Changeover Active</div>
-                            </div>
-                            <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
-                                <div class="status-item"><span id="led15" class="red"></span></div>
-                                <div>System Fault</div>
-                            </div>
+                <div style="display: flex; justify-content: center;">
+                    <!-- LED column -->
+                    <div style="display: flex; flex-direction: column; gap: 0px; align-items: left;">
+                        <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                            <div class="status-item"><span id="led6" class="yellow"></span></div>
+                            <div>Equalisation Valve/Prime</div>
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                            <div class="status-item"><span id="led14" class="yellow"></span></div>
+                            <div>Changeover Active</div>
+                        </div>
+                        <div style="display: flex; flex-direction: row; gap: 5px; align-items: center;">
+                            <div class="status-item"><span id="led15" class="red"></span></div>
+                            <div>System Fault</div>
                         </div>
                     </div>
                 </div>
+            </div>
 
             <!-- New Power Source Section -->
             <div style="text-align: center; margin: 5px auto;">
                 <h3>Power Source</h3>
-                    <div style="display: flex; justify-content: center; gap: 40px; align-items: center;">
-                        <!-- External -->
-                        <div class="status-item" style="justify-content: center;">
-                            <img src="socket.svg" alt="Socket" style="height: 48px; margin-right: 5px;">
-                            <span id="led16" class="green" style="margin-right: 10px;"></span>External
-                        </div>
+                <div style="display: flex; justify-content: center; gap: 40px; align-items: center;">
+                    <!-- External -->
+                    <div class="status-item" style="justify-content: center;">
+                        <img src="socket.svg" alt="Socket" style="height: 48px; margin-right: 5px;">
+                        <span id="led16" class="green" style="margin-right: 10px;"></span>External
+                    </div>
 
-                        <!-- Solar -->
-                        <div class="status-item reverse" style="justify-content: center;">
-                            Solar
-                            <span id="led8" class="green" style="margin-left: 10px;"></span>
-                            <img src="sun.svg" alt="Sun" style="height: 48px; margin-left: 5px;">
-                        </div>
+                    <!-- Solar -->
+                    <div class="status-item reverse" style="justify-content: center;">
+                        Solar
+                        <span id="led8" class="green" style="margin-left: 10px;"></span>
+                        <img src="sun.svg" alt="Sun" style="height: 48px; margin-left: 5px;">
                     </div>
                 </div>
+            </div>
 
             <button class="stop" onclick="sendRequest('stop')">STOP</button>
             <div class="footer">
@@ -487,6 +487,13 @@ input:checked + .slider:before {
                     <span>Solar</span>
                 </div>
             </div>
+            
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start;">
+                <strong>Manual Rotation:</strong>
+                <div style="margin-top: 10px; display: flex; gap: 20px;">
+                    <button id="rotateCW" style="padding: 10px 20px;">Rotate Clockwise</button>
+                    <button id="rotateCCW" style="padding: 10px 20px;">Rotate Anticlockwise</button>
+                </div>
             </div>
             
         </div>
@@ -862,6 +869,52 @@ input:checked + .slider:before {
                     sendRequest("auto");
                 }
             });
+            
+            document.getElementById("rotateCW").addEventListener("mousedown", function () {
+                sendRequest("cw");
+            });
+            document.getElementById("rotateCW").addEventListener("mouseup", function () {
+                sendRequest("stop");
+            });
+            document.getElementById("rotateCW").addEventListener("mouseleave", function () {
+                sendRequest("stop");
+            });
+
+            document.getElementById("rotateCCW").addEventListener("mousedown", function () {
+                sendRequest("ccw");
+            });
+            document.getElementById("rotateCCW").addEventListener("mouseup", function () {
+                sendRequest("stop");
+            });
+            document.getElementById("rotateCCW").addEventListener("mouseleave", function () {
+                sendRequest("stop");
+            });
+            
+            function setupHoldButton(buttonId, startAction, stopAction) {
+                const btn = document.getElementById(buttonId);
+
+                const start = () => sendRequest(startAction);
+                const stop = () => sendRequest(stopAction);
+
+                btn.addEventListener("mousedown", start);
+                btn.addEventListener("mouseup", stop);
+                btn.addEventListener("mouseleave", stop);
+                btn.addEventListener("touchstart", function (e) {
+                    e.preventDefault(); // Prevent mouse event after touch
+                    start();
+                }, { passive: false });
+                btn.addEventListener("touchend", function (e) {
+                    e.preventDefault();
+                    stop();
+                }, { passive: false });
+                btn.addEventListener("touchcancel", function (e) {
+                    e.preventDefault();
+                    stop();
+                }, { passive: false });
+            }
+
+            setupHoldButton("rotateCW", "cw", "stop");
+            setupHoldButton("rotateCCW", "ccw", "stop");
 
         });
                 
